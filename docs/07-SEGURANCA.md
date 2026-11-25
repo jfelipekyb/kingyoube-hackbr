@@ -25,5 +25,15 @@ O repositório é **público**. Trate tudo como se um concorrente e um atacante 
 ## LLM (opcional)
 - Só no servidor. Recebe apenas fatos já calculados, sem CNPJ completo nem chave completa. Não decide valor nem status.
 
+## Voz (Kim)
+- Chave da ElevenLabs só no servidor; o navegador fala com rotas do app.
+- Áudio do usuário não é guardado; só o texto reconhecido vai para `kim_queries` e auditoria.
+- A Kim não executa ação: nenhuma aprovação, recusa ou geração de DARF por voz (teste).
+- Rótulo "voz sintética" na tela e no vídeo. Clone de voz de pessoa real só com consentimento escrito.
+- Rate limit nas rotas `/api/kim/*` (evita gastar créditos).
+
+## Scraping
+- Lista fechada de URLs (`docs/05`); qualquer outra é recusada no serviço.
+
 ## Antes de tornar público
 - `gitleaks` limpo; `grep -rniE "$FORBIDDEN_TERMS" --exclude-dir=node_modules --exclude-dir=.git .` sem resultado (a lista de termos proibidos fica só no segredo `FORBIDDEN_TERMS`, nunca no repositório); revisão humana do Oscar.

@@ -39,3 +39,18 @@ Proposta `darf_gerado` vira `pago_confirmado` quando aparece em `recolhimentos` 
 ## Explicação (texto)
 
 Gerada a partir de modelo fixo por regra, com os números já calculados. Exemplo R02: "A nota informa CBS de R$ 120,00. A Receita apurou R$ 132,00 para a mesma chave no período 10/2026. Diferença de R$ 12,00 a maior na Receita. Verifique a classificação tributária dos itens da nota." Se `ANTHROPIC_API_KEY` existir, a LLM pode **reescrever** esse texto para ficar mais claro, recebendo só os fatos (sem CNPJ completo) e sem poder mudar número; guardar o texto original junto.
+
+## Carteira (visão do escritório)
+
+Calculado por cliente a partir dos itens já conciliados, em centavos, sem regra nova:
+
+- **Dinheiro em risco** = crédito travado (abaixo) + soma de `|diff_cents|` dos itens `divergente_valor` + soma de `invoice_cents` dos itens `so_na_nota` + soma de `rfb_cents` dos itens `so_na_receita`. Itens `aguardando_janela` e `atencao` não entram (aparecem como contagem).
+- **Crédito travado** = por candidata, `aApropriar_cents` menos o principal dos RAD já confirmados para a chave (nunca negativo). Um RAD parcial confirmado deixa o saldo restante travado; a nota continua candidata enquanto houver saldo.
+- **Decisões pendentes** = candidatas a RAD com saldo travado e sem proposta em `aprovada`, `darf_gerado` ou `pago_confirmado` + itens `divergente_valor`. (É o número que a Kim fala.)
+- Ordem da carteira: dinheiro em risco, decrescente; empate por nome.
+
+Os valores esperados do seed estão em `docs/06` e têm teste.
+
+## Conferente (recálculo independente)
+
+O Conferente (`docs/09`) refaz o status de cada item lendo direto `rfb_raw_files` e `invoices`, com implementação própria (não importa o módulo `conciliacao/`). Para cada item compara status e `diff_cents` com `reconciliation_items`. Igual → `revisado_ok`; diferente → `revisado_divergente`, com o item marcado para olhar humano e um evento na auditoria. O Conferente nunca corrige: só aponta.

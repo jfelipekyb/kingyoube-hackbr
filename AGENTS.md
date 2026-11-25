@@ -1,12 +1,14 @@
-# AGENTS.md — Conciliação CBS (KingYouBe · Hack Brasil 2026)
+# AGENTS.md — Equipe CBS da KingYouBe (Hack Brasil 2026)
 
 Você é o engenheiro deste repositório. Leia este arquivo inteiro antes de qualquer tarefa. Ele é curto de propósito; o detalhe está em `docs/`.
 
 ## O que é o produto
 
-Sistema que concilia as **notas fiscais** de uma empresa com o que a **Receita Federal apurou de CBS** (débitos, créditos, pagamentos e recolhimentos), explica cada **divergência** e, quando a empresa é compradora, **prepara o DARF de recolhimento como adquirente (RAD)** para um contador aprovar. Tudo com trilha de auditoria.
+Uma **equipe digital** para o escritório contábil: agentes com nome e função que conferem as **notas fiscais** de toda a carteira de clientes com o que a **Receita Federal apurou de CBS** (débitos, créditos, pagamentos e recolhimentos), explicam cada **divergência**, cobram o fornecedor que não recolheu e, quando o cliente é comprador, **preparam o DARF de recolhimento como adquirente (RAD)** para o contador aprovar. A **Kim** é a gestora da equipe e responde por voz. Tudo com trilha de auditoria.
 
-Fluxo: nota → apuração da Receita → conciliação → divergência explicada → proposta de RAD → aprovação humana → DARF gerado → e-mail ao financeiro → pagamento confirmado pela Receita → conciliado.
+Fluxo: nota → apuração da Receita → conciliação → conferência independente → divergência explicada → cobrança ao fornecedor → proposta de RAD → aprovação humana → DARF gerado → e-mail ao financeiro → pagamento confirmado pela Receita → conciliado.
+
+DNA: fonte → agente prepara → agente confere → **pessoa decide** → evidência registrada. A IA explica e fala; a regra calcula; o contador decide.
 
 ## Onde está cada coisa
 
@@ -16,10 +18,11 @@ Fluxo: nota → apuração da Receita → conciliação → divergência explica
 | `docs/02-ARQUITETURA.md` | Stack, módulos, modelo de dados, estados, rotas, variáveis de ambiente |
 | `docs/03-CONTRATO-RECEITA-CBS.md` | Contrato oficial da API da Receita (fonte de verdade dos campos) |
 | `docs/04-REGRAS-CONCILIACAO.md` | Regras determinísticas de conciliação e de candidata a RAD |
-| `docs/05-PARCEIROS.md` | Firecrawl, Resend e Devin: como e onde usar |
+| `docs/05-PARCEIROS.md` | Firecrawl, Resend, Devin (parceiros) e ElevenLabs: como e onde usar |
 | `docs/06-DADOS-DEMO.md` | Cenários da base fictícia (seed) |
 | `docs/07-SEGURANCA.md` | Regras de segurança e LGPD |
-| `docs/08-BACKLOG.md` | Sessões S1–S6, com critérios de aceite |
+| `docs/08-BACKLOG.md` | Sessões S1–S9, com critérios de aceite |
+| `docs/09-EQUIPE-E-KIM.md` | Agentes, eventos, Sala da Equipe, Conferente, horas devolvidas, organograma e Kim por voz |
 
 ## Stack (não troque sem pedir)
 
@@ -27,7 +30,7 @@ Fluxo: nota → apuração da Receita → conciliação → divergência explica
 - **Postgres** (Neon em produção; Postgres local em Docker no desenvolvimento) com **Drizzle ORM** e migrations versionadas.
 - **Vitest** para testes; ESLint; `tsc --noEmit`.
 - Deploy na **Vercel** a partir da `main` (o usuário conecta; você não faz deploy).
-- SDKs: `firecrawl` (pacote oficial, classe `Firecrawl`), `resend` (classe `Resend`), `svix` só se precisar verificar webhook manualmente.
+- SDKs: `firecrawl` (pacote oficial, classe `Firecrawl`), `resend` (classe `Resend`), SDK oficial da ElevenLabs (ou `fetch` direto na API), `svix` só se precisar verificar webhook manualmente.
 
 ## Comandos (mantenha funcionando)
 
@@ -49,7 +52,9 @@ npm run verify     # lint + typecheck + testes — TEM que passar antes de qualq
 7. **Segredo só em variável de ambiente** (Secrets do Devin / Vercel). Nunca em código, teste, log, commit, mensagem de PR ou prompt. Não logar URL assinada, token nem corpo de webhook.
 8. **Regra fiscal é determinística e testada.** IA (se houver) só redige explicação a partir de fatos já calculados; nunca decide valor nem status.
 9. **Trilha de auditoria:** toda ação relevante (consulta, download, conciliação, proposta, aprovação, DARF, e-mail, alerta) grava quem, o quê, quando, resultado — sem segredo.
-10. **Scraping só de páginas públicas oficiais** (documentação da Receita) e nunca de dados de pessoa física. Não burlar captcha.
+10. **Scraping só das páginas listadas em `docs/05`** (documentação oficial da Receita e o site fictício do fornecedor da demo) e nunca de dados de pessoa física. Não burlar captcha.
+11. **A Kim fala, mas não decide.** Nenhuma aprovação, recusa ou geração de DARF por voz. Números falados vêm da base, nunca de LLM.
+12. **Todo agente registra o que fez** em `agent_events` (`docs/09`). Nenhum agente aprova o próprio trabalho.
 
 ## Como trabalhar
 

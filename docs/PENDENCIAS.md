@@ -9,3 +9,6 @@
 | P5 | Página de download (`urlAssinada`) não foi lida | Modo REAL | Ler `download.html` | Aberta |
 | P6 | Cota de DARF, situação e download não consta | Modo REAL | Doc / teste real | Aberta |
 | P7 | Restrições do remetente de teste da Resend | E-mail sem domínio | Doc da Resend | Aberta — usar domínio verificado |
+| P8 | Consulta em nome do cliente da carteira (procuração eletrônica do escritório) não consta na doc lida | Modo REAL multicliente | Manual "Receita Integra" / contador | Aberta — na demo, cada cliente sincroniza com a própria credencial simulada |
+| P9 | Formato atual da extração JSON do Firecrawl v2 | Contato do fornecedor | docs.firecrawl.dev | Aberta — conferir na S5 |
+| P10 | Endpoints e modelos atuais da ElevenLabs para português | Kim por voz | elevenlabs.io/docs | Aberta — conferir na S7 |
