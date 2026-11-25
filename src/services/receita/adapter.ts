@@ -6,9 +6,10 @@ import { demoToday } from "@/lib/clock";
 import { receitaMode, type Env } from "@/lib/config";
 import { RealAdapter, realConfigFromEnv } from "./real";
 import { SimuladoAdapter } from "./simulado";
-import { ReceitaError, type ReceitaAdapter, type ResolveCompany } from "./types";
+import { piiHashKey } from "./pii";
+import { ReceitaConfigError, ReceitaError, type ReceitaAdapter, type ResolveCompany } from "./types";
 
-export class ReceitaConfigError extends Error {}
+export { ReceitaConfigError };
 
 export function companyResolver(db: Db): ResolveCompany {
   return async (companyId) => {
@@ -64,5 +65,6 @@ export function createReceitaAdapter(
   if (!config) {
     throw new ReceitaConfigError("Modo REAL exige RFB_CLIENT_ID, RFB_CLIENT_SECRET, RFB_TOKEN_URL e RFB_CNPJ");
   }
+  piiHashKey(env);
   return new RealAdapter(config, { resolveCompany, fetch: options.fetch, now: options.now });
 }

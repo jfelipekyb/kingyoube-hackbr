@@ -87,3 +87,6 @@ export class ReceitaError extends Error {
     this.name = "ReceitaError";
   }
 }
+
+/** Configuração que impede o modo REAL de subir (faltam variáveis). */
+export class ReceitaConfigError extends Error {}

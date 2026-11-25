@@ -8,6 +8,7 @@ import { addDays, brasiliaDay, daysBetween } from "@/lib/dates";
 import { recordAgentEvent, type AgentEventStatus } from "@/services/equipe";
 import { normalizeFile, storeRawFile } from "./normalize";
 import { ReceitaFileError } from "./parser";
+import { piiHashKey } from "./pii";
 import { RECEITA_SERVICES, ReceitaError, SERVICE_LABEL, type ReceitaAdapter, type ReceitaService } from "./types";
 import { newWebhookNonce, webhookUrl } from "./webhook-nonce";
 
@@ -295,7 +296,7 @@ export async function processRequest(deps: ApuracaoDeps, requestId: string): Pro
   if (row.state === "concluida") {
     try {
       const file = await deps.adapter.download(ticket);
-      const stored = await storeRawFile(db, row.id, company.id, file.raw);
+      const stored = await storeRawFile(db, row.id, piiHashKey(deps.env ?? process.env), file.raw);
       if (!(await transition(db, row, "baixada", { downloadedAt: now }))) return null;
       await event(deps, db, {
         action: "baixar",

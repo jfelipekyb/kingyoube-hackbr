@@ -7,6 +7,7 @@ import { seedDemo } from "@/seed/seed";
 import { createTestDb } from "@/test/db";
 import { createReceitaAdapter } from "./adapter";
 import { normalizeFile } from "./normalize";
+import { DEMO_PII_HASH_KEY, hmacPii } from "./pii";
 import { brasiliaDayBounds, pollRequests, processRequest, syncCompany, syncOverview, windowRisk, type ApuracaoDeps } from "./sync";
 import { RECEITA_SERVICES, ReceitaError, type ReceitaAdapter } from "./types";
 
@@ -77,8 +78,10 @@ describe("Agente Apuração em SIMULADO", () => {
     const raws = await db.select().from(s.rfbRawFiles);
     expect(raws).toHaveLength(4);
     expect(raws.every((r) => /^[0-9a-f]{64}$/.test(r.sha256))).toBe(true);
-    // niConsumidor pode ser CPF (docs/07): só hash com sal + 2 últimos dígitos.
-    for (const r of raws) expect((r.payload as { niConsumidor: string }).niConsumidor).toMatch(new RegExp(`^h:[0-9a-f]{64}:${padaria.cnpj.slice(-2)}$`));
+    // niConsumidor pode ser CPF (docs/07): só HMAC-SHA256 + 2 últimos dígitos; em SIMULADO, chave fixa de demonstração.
+    const masked = `h:${hmacPii(DEMO_PII_HASH_KEY, padaria.cnpj)}:${padaria.cnpj.slice(-2)}`;
+    for (const r of raws) expect((r.payload as { niConsumidor: string }).niConsumidor).toBe(masked);
+    expect(JSON.stringify(raws.map((r) => (r.payload as { niConsumidor: string }).niConsumidor))).not.toContain(padaria.cnpj);
 
     // Toda etapa gravou agent_event do agente apuracao.
     const events = await db.select().from(s.agentEvents).where(eq(s.agentEvents.agent, "apuracao"));
