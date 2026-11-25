@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { actorFromRequest } from "@/lib/request-actor";
 import { recordAudit } from "@/services/auditoria";
 import { ReceitaError, syncCompany, syncOverview, syncPortfolio } from "@/services/receita";
-import { apuracaoDeps, optionalCompanyId, readJson } from "../http";
+import { apuracaoDeps, optionalCompanyId, readJson, requireOperator } from "../http";
 
 export const dynamic = "force-dynamic";
 
 /** Abre as consultas de um cliente (`companyId`) ou da carteira inteira; só os serviços com cota. */
 export async function POST(request: Request) {
+  const denied = requireOperator(request);
+  if (denied) return denied;
   let body: Record<string, unknown>;
   try {
     body = await readJson(request);

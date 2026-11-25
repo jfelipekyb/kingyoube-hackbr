@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { isAuthorizedCron } from "@/services/demo";
 import { pollRequests, syncOverview } from "@/services/receita";
-import { apuracaoDeps, optionalCompanyId, readJson } from "../http";
+import { apuracaoDeps, optionalCompanyId, readJson, requireOperator } from "../http";
 
 export const dynamic = "force-dynamic";
 
 /** Consulta a situação do que está em aberto, baixa o que ficou pronto e normaliza. */
 export async function POST(request: Request) {
+  const denied = requireOperator(request);
+  if (denied) return denied;
   let body: Record<string, unknown>;
   try {
     body = await readJson(request);

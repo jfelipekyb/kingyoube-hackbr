@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/db/client";
+import { isSimulado } from "@/lib/config";
+import { isAuthorizedCron } from "@/services/demo";
 import { createReceitaAdapter, ReceitaConfigError, type ApuracaoDeps } from "@/services/receita";
+
+/** Em REAL, sincronizar e acompanhar exigem `Authorization: Bearer <CRON_SECRET>`; em SIMULADO a demo é pública. */
+export function requireOperator(request: Request): NextResponse | null {
+  if (isSimulado() || isAuthorizedCron(request.headers.get("authorization"))) return null;
+  return NextResponse.json({ erro: "não autorizado" }, { status: 401 });
+}
 
 export async function readJson(request: Request): Promise<Record<string, unknown>> {
   const text = await request.text();
