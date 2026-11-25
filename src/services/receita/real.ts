@@ -69,6 +69,9 @@ export class RealAdapter implements ReceitaAdapter {
   /** OAuth2 client credentials (RFC 6749 §4.4). URL do token: RFB_TOKEN_URL (pendência P1). */
   private async accessToken(): Promise<string> {
     if (this.token && this.token.expiresAt > this.now().getTime()) return this.token.value;
+    if (!this.config.tokenUrl.startsWith("https://")) {
+      throw new ReceitaError("TOKEN_URL_INSEGURA", "RFB_TOKEN_URL precisa ser https; a credencial não sai sem TLS");
+    }
     const basic = Buffer.from(`${encodeURIComponent(this.config.clientId)}:${encodeURIComponent(this.config.clientSecret)}`).toString("base64");
     const res = await this.fetch(this.config.tokenUrl, {
       method: "POST",

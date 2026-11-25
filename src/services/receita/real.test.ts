@@ -64,6 +64,14 @@ describe("RealAdapter", () => {
     expect((err as ReceitaError).message).not.toContain("segredo-teste");
   });
 
+  it("RFB_TOKEN_URL sem https: não envia a credencial", async () => {
+    const { fetch, calls } = fakeFetch(() => new Response("", { status: 500 }));
+    await expect(adapter(fetch, { ...CONFIG, tokenUrl: "http://token.exemplo/oauth" }).requestConsulta("c1", "debitos")).rejects.toMatchObject({
+      code: "TOKEN_URL_INSEGURA",
+    });
+    expect(calls).toHaveLength(0);
+  });
+
   it("situação: GET com Bearer e Accept; EXPIRADA com código", async () => {
     const { fetch, calls } = fakeFetch(() =>
       Response.json({ situacao: "EXPIRADA", codigoErro: "EXPIRADA", mensagemErro: "Tempo limite de processamento excedido (240 minutos)." }),
