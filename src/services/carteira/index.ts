@@ -6,7 +6,7 @@ export async function listCompanies(db: Db) {
   return db.select({ id: companies.id, name: companies.name }).from(companies).orderBy(asc(companies.name));
 }
 
-export async function portfolioOverview(db: Db) {
+export async function portfolioOverview(db: Db, companyId: string | null = null) {
   return db
     .select({
       id: companies.id,
@@ -20,6 +20,7 @@ export async function portfolioOverview(db: Db) {
     })
     .from(companies)
     .leftJoin(invoices, eq(invoices.companyId, companies.id))
+    .where(companyId ? eq(companies.id, companyId) : undefined)
     .groupBy(companies.id)
     .orderBy(asc(companies.name));
 }

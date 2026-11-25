@@ -2,11 +2,12 @@ import { PageHeader } from "@/components/under-construction";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getDb } from "@/db/client";
 import { formatCnpj } from "@/lib/cnpj";
+import { currentCompanyId } from "@/lib/demo-session";
 import { formatBRL } from "@/lib/money";
 import { portfolioOverview } from "@/services/carteira";
 
 export default async function CarteiraPage() {
-  const rows = await portfolioOverview(getDb());
+  const rows = await portfolioOverview(getDb(), await currentCompanyId());
   const totalInvoices = rows.reduce((n, r) => n + r.invoices, 0);
   const totalCbs = rows.reduce((n, r) => n + BigInt(r.cbsCents), 0n);
   return (
