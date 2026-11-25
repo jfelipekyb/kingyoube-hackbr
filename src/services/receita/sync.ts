@@ -265,7 +265,7 @@ export async function processRequest(deps: ApuracaoDeps, requestId: string): Pro
   if (row.state === "concluida") {
     try {
       const file = await deps.adapter.download(ticket);
-      const stored = await storeRawFile(db, row.id, file.raw);
+      const stored = await storeRawFile(db, row.id, company.id, file.raw);
       if (!(await transition(db, row, "baixada", { downloadedAt: now }))) return null;
       await event(deps, db, {
         action: "baixar",

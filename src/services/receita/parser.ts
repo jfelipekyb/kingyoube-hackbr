@@ -256,7 +256,7 @@ export function parseReceitaFile(service: ReceitaService, raw: string): ParsedRe
     service,
     ticket: str(root.tiqueteSolicitacao, "tiqueteSolicitacao"),
     ni: str(root.ni, "ni", 14),
-    niConsumidor: str(root.niConsumidor, "niConsumidor", 14),
+    niConsumidor: str(root.niConsumidor, "niConsumidor"),
     geradoEm: dateTime(root.geradoEm, "geradoEm"),
     debits: service === "debitos" ? parseDebits(apuracao) : [],
     credits: service === "creditos" ? parseCredits(apuracao) : [],

@@ -77,6 +77,8 @@ describe("Agente Apuração em SIMULADO", () => {
     const raws = await db.select().from(s.rfbRawFiles);
     expect(raws).toHaveLength(4);
     expect(raws.every((r) => /^[0-9a-f]{64}$/.test(r.sha256))).toBe(true);
+    // niConsumidor pode ser CPF (docs/07): só hash com sal + 2 últimos dígitos.
+    for (const r of raws) expect((r.payload as { niConsumidor: string }).niConsumidor).toMatch(new RegExp(`^h:[0-9a-f]{64}:${padaria.cnpj.slice(-2)}$`));
 
     // Toda etapa gravou agent_event do agente apuracao.
     const events = await db.select().from(s.agentEvents).where(eq(s.agentEvents.agent, "apuracao"));

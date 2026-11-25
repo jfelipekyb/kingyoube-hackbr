@@ -10,8 +10,16 @@ export function sha256(raw: string): string {
   return createHash("sha256").update(raw, "utf8").digest("hex");
 }
 
-/** Guarda o bruto (append-only). O mesmo conteúdo para a mesma solicitação não entra duas vezes. */
-export async function storeRawFile(db: Db, requestId: string, raw: string) {
+/** `niConsumidor` pode ser CPF (docs/07): fica só o hash com o sal do cliente + os 2 últimos dígitos. */
+export function maskNiConsumidor(raw: string, companyId: string): string {
+  return raw.replace(/("niConsumidor"\s*:\s*)"(\d{11}|\d{14})"/, (_m, prefix: string, ni: string) => {
+    const hash = createHash("sha256").update(`ni-consumidor:${companyId}:${ni}`).digest("hex");
+    return `${prefix}"h:${hash}:${ni.slice(-2)}"`;
+  });
+}
+
+/** Guarda o bruto (append-only). O sha256 é do arquivo como veio; o payload sai com o `niConsumidor` mascarado. */
+export async function storeRawFile(db: Db, requestId: string, companyId: string, raw: string) {
   const hash = sha256(raw);
   const [existing] = await db
     .select({ id: rfbRawFiles.id })
@@ -21,7 +29,7 @@ export async function storeRawFile(db: Db, requestId: string, raw: string) {
   if (existing) return { id: existing.id, sha256: hash };
   const [row] = await db
     .insert(rfbRawFiles)
-    .values({ requestId, sha256: hash, payload: sql`${raw}::jsonb` })
+    .values({ requestId, sha256: hash, payload: sql`${maskNiConsumidor(raw, companyId)}::jsonb` })
     .returning({ id: rfbRawFiles.id });
   return { id: row.id, sha256: hash };
 }
