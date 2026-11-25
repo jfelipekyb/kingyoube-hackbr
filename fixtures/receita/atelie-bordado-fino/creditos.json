@@ -1,0 +1,341 @@
+{
+  "tiqueteSolicitacao": "SIMULADO-creditos-00630919",
+  "ni": "00630919",
+  "niConsumidor": "00630919000169",
+  "geradoEm": "2026-11-20T13:00:00Z",
+  "apuracao": [
+    {
+      "pa": "10/2026",
+      "creditos": [
+        {
+          "origem": 0,
+          "documento": 55,
+          "chave": "35261000467134000117550010000200121812148036",
+          "emissao": "2026-10-01T10:00:00-03:00",
+          "registro": "2026-10-02T08:00:00-03:00",
+          "atualizacao": "2026-10-02T08:00:00-03:00",
+          "cbs": {
+            "apurado": 35.16,
+            "apropriacao": {
+              "apropriado": 35.16,
+              "utilizacao": {
+                "naoUtilizado": {
+                  "saldoCredor": 0.00
+                }
+              }
+            }
+          }
+        },
+        {
+          "origem": 0,
+          "documento": 55,
+          "chave": "35261000110306000109550010000200111328099152",
+          "emissao": "2026-10-11T10:00:00-03:00",
+          "registro": "2026-10-12T08:00:00-03:00",
+          "atualizacao": "2026-10-12T08:00:00-03:00",
+          "cbs": {
+            "apurado": 694.05,
+            "apropriacao": {
+              "apropriado": 694.05,
+              "utilizacao": {
+                "naoUtilizado": {
+                  "saldoCredor": 0.00
+                }
+              }
+            }
+          }
+        },
+        {
+          "origem": 0,
+          "documento": 55,
+          "chave": "35261000411304000141550010000200081637190831",
+          "emissao": "2026-10-12T10:00:00-03:00",
+          "registro": "2026-10-13T08:00:00-03:00",
+          "atualizacao": "2026-10-13T08:00:00-03:00",
+          "cbs": {
+            "apurado": 626.32,
+            "apropriacao": {
+              "apropriado": 626.32,
+              "utilizacao": {
+                "naoUtilizado": {
+                  "saldoCredor": 0.00
+                }
+              }
+            }
+          }
+        },
+        {
+          "origem": 0,
+          "documento": 55,
+          "chave": "35261000982378000138550010000200041091930634",
+          "emissao": "2026-10-14T10:00:00-03:00",
+          "registro": "2026-10-15T08:00:00-03:00",
+          "atualizacao": "2026-10-15T08:00:00-03:00",
+          "cbs": {
+            "apurado": 897.82,
+            "apropriacao": {
+              "apropriado": 897.82,
+              "utilizacao": {
+                "naoUtilizado": {
+                  "saldoCredor": 0.00
+                }
+              }
+            }
+          }
+        },
+        {
+          "origem": 0,
+          "documento": 55,
+          "chave": "35261000895104000101550010000200071893490418",
+          "emissao": "2026-10-20T10:00:00-03:00",
+          "registro": "2026-10-21T08:00:00-03:00",
+          "atualizacao": "2026-10-21T08:00:00-03:00",
+          "cbs": {
+            "apurado": 337.81,
+            "apropriacao": {
+              "apropriado": 337.81,
+              "utilizacao": {
+                "naoUtilizado": {
+                  "saldoCredor": 0.00
+                }
+              }
+            }
+          }
+        },
+        {
+          "origem": 0,
+          "documento": 55,
+          "chave": "35261000394457000128550010000200041972728694",
+          "emissao": "2026-10-21T10:00:00-03:00",
+          "registro": "2026-10-22T08:00:00-03:00",
+          "atualizacao": "2026-10-22T08:00:00-03:00",
+          "cbs": {
+            "apurado": 386.90,
+            "apropriacao": {
+              "apropriado": 386.90,
+              "utilizacao": {
+                "naoUtilizado": {
+                  "saldoCredor": 0.00
+                }
+              }
+            }
+          }
+        },
+        {
+          "origem": 0,
+          "documento": 55,
+          "chave": "35261000201918000107550010000200061405003791",
+          "emissao": "2026-10-25T10:00:00-03:00",
+          "registro": "2026-10-26T08:00:00-03:00",
+          "atualizacao": "2026-10-26T08:00:00-03:00",
+          "cbs": {
+            "apurado": 421.03,
+            "apropriacao": {
+              "apropriado": 421.03,
+              "utilizacao": {
+                "naoUtilizado": {
+                  "saldoCredor": 0.00
+                }
+              }
+            }
+          }
+        },
+        {
+          "origem": 0,
+          "documento": 55,
+          "chave": "35261000412266000141550010000200041685987567",
+          "emissao": "2026-10-26T10:00:00-03:00",
+          "registro": "2026-10-27T08:00:00-03:00",
+          "atualizacao": "2026-10-27T08:00:00-03:00",
+          "cbs": {
+            "apurado": 120.34,
+            "apropriacao": {
+              "apropriado": 120.34,
+              "utilizacao": {
+                "naoUtilizado": {
+                  "saldoCredor": 0.00
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "pa": "11/2026",
+      "creditos": [
+        {
+          "origem": 0,
+          "documento": 55,
+          "chave": "35261100355685000199550010000200091915135844",
+          "emissao": "2026-11-01T10:00:00-03:00",
+          "registro": "2026-11-02T08:00:00-03:00",
+          "atualizacao": "2026-11-02T08:00:00-03:00",
+          "cbs": {
+            "apurado": 130.04,
+            "apropriacao": {
+              "apropriado": 130.04,
+              "utilizacao": {
+                "naoUtilizado": {
+                  "saldoCredor": 0.00
+                }
+              }
+            }
+          }
+        },
+        {
+          "origem": 0,
+          "documento": 55,
+          "chave": "35261100930339000197550010000200101088165289",
+          "emissao": "2026-11-01T10:00:00-03:00",
+          "registro": "2026-11-02T08:00:00-03:00",
+          "atualizacao": "2026-11-02T08:00:00-03:00",
+          "cbs": {
+            "apurado": 16.70,
+            "apropriacao": {
+              "apropriado": 16.70,
+              "utilizacao": {
+                "naoUtilizado": {
+                  "saldoCredor": 0.00
+                }
+              }
+            }
+          }
+        },
+        {
+          "origem": 0,
+          "documento": 55,
+          "chave": "35261100930339000197550010000200091213904257",
+          "emissao": "2026-11-03T10:00:00-03:00",
+          "registro": "2026-11-04T08:00:00-03:00",
+          "atualizacao": "2026-11-04T08:00:00-03:00",
+          "cbs": {
+            "apurado": 679.61,
+            "apropriacao": {
+              "apropriado": 679.61,
+              "utilizacao": {
+                "naoUtilizado": {
+                  "saldoCredor": 0.00
+                }
+              }
+            }
+          }
+        },
+        {
+          "origem": 0,
+          "documento": 55,
+          "chave": "35261100412266000141550010000200051005566659",
+          "emissao": "2026-11-07T10:00:00-03:00",
+          "registro": "2026-11-08T08:00:00-03:00",
+          "atualizacao": "2026-11-08T08:00:00-03:00",
+          "cbs": {
+            "apurado": 750.74,
+            "apropriacao": {
+              "apropriado": 750.74,
+              "utilizacao": {
+                "naoUtilizado": {
+                  "saldoCredor": 0.00
+                }
+              }
+            }
+          }
+        },
+        {
+          "origem": 0,
+          "documento": 55,
+          "chave": "35261100110306000109550010000200121347971740",
+          "emissao": "2026-11-08T10:00:00-03:00",
+          "registro": "2026-11-09T08:00:00-03:00",
+          "atualizacao": "2026-11-09T08:00:00-03:00",
+          "cbs": {
+            "apurado": 224.55,
+            "apropriacao": {
+              "apropriado": 224.55,
+              "utilizacao": {
+                "naoUtilizado": {
+                  "saldoCredor": 0.00
+                }
+              }
+            }
+          }
+        },
+        {
+          "origem": 0,
+          "documento": 55,
+          "chave": "35261100719103000106550010000200081180457923",
+          "emissao": "2026-11-08T10:00:00-03:00",
+          "registro": "2026-11-09T08:00:00-03:00",
+          "atualizacao": "2026-11-09T08:00:00-03:00",
+          "cbs": {
+            "apurado": 894.52,
+            "apropriacao": {
+              "apropriado": 894.52,
+              "utilizacao": {
+                "naoUtilizado": {
+                  "saldoCredor": 0.00
+                }
+              }
+            }
+          }
+        },
+        {
+          "origem": 0,
+          "documento": 55,
+          "chave": "35261100712395000155550010000200101665374510",
+          "emissao": "2026-11-10T10:00:00-03:00",
+          "registro": "2026-11-11T08:00:00-03:00",
+          "atualizacao": "2026-11-11T08:00:00-03:00",
+          "cbs": {
+            "apurado": 530.48,
+            "apropriacao": {
+              "apropriado": 530.48,
+              "utilizacao": {
+                "naoUtilizado": {
+                  "saldoCredor": 0.00
+                }
+              }
+            }
+          }
+        },
+        {
+          "origem": 0,
+          "documento": 55,
+          "chave": "35261100098970000171550010000200061350476240",
+          "emissao": "2026-11-11T10:00:00-03:00",
+          "registro": "2026-11-12T08:00:00-03:00",
+          "atualizacao": "2026-11-12T08:00:00-03:00",
+          "cbs": {
+            "apurado": 79.83,
+            "apropriacao": {
+              "apropriado": 79.83,
+              "utilizacao": {
+                "naoUtilizado": {
+                  "saldoCredor": 0.00
+                }
+              }
+            }
+          }
+        },
+        {
+          "origem": 0,
+          "documento": 55,
+          "chave": "35261100411304000141550010000200071192279668",
+          "emissao": "2026-11-11T10:00:00-03:00",
+          "registro": "2026-11-12T08:00:00-03:00",
+          "atualizacao": "2026-11-12T08:00:00-03:00",
+          "cbs": {
+            "apurado": 656.53,
+            "apropriacao": {
+              "apropriado": 656.53,
+              "utilizacao": {
+                "naoUtilizado": {
+                  "saldoCredor": 0.00
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

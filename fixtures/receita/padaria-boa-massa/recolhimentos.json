@@ -1,0 +1,30 @@
+{
+  "tiqueteSolicitacao": "SIMULADO-recolhimentos-00436612",
+  "ni": "00436612",
+  "niConsumidor": "00436612000121",
+  "geradoEm": "2026-11-20T13:00:00Z",
+  "apuracao": [
+    {
+      "dataArrecadacao": "2026-11-13",
+      "pagamentos": [
+        {
+          "numeroDARF": "03341630055229670",
+          "tipo": 1,
+          "composicao": [
+            {
+              "sequencial": 1,
+              "pa": "10/2026",
+              "vencimento": "2026-11-13",
+              "niFornecedor": "00201918000107",
+              "chaveDFE": "35261000201918000107550010000055301558834922",
+              "principal": 100.00,
+              "multa": 10.00,
+              "juros": 5.00,
+              "total": 115.00
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

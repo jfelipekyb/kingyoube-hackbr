@@ -1,0 +1,29 @@
+{
+  "tiqueteSolicitacao": "SIMULADO-pagamentos-00436612",
+  "ni": "00436612",
+  "niConsumidor": "00436612000121",
+  "geradoEm": "2026-11-20T13:00:00Z",
+  "apuracao": [
+    {
+      "dataArrecadacao": "2026-11-15",
+      "pagamentos": [
+        {
+          "numeroDARF": "04558341778637717",
+          "tipo": 2,
+          "niContribuinte": "00436612000121",
+          "composicao": [
+            {
+              "sequencial": 1,
+              "pa": "10/2026",
+              "vencimento": "2026-11-15",
+              "principal": 90.00,
+              "multa": 0.00,
+              "juros": 0.00,
+              "total": 90.00
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
