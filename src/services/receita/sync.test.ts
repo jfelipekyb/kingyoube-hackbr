@@ -201,6 +201,18 @@ describe("Agente Apuração em SIMULADO", () => {
     expect(Number(row.n)).toBe(1);
   });
 
+  it("reserva sem tíquete (abertura interrompida) não trava o serviço", async () => {
+    const clock = { t: Date.UTC(2026, 10, 25, 12) };
+    const now = () => new Date(clock.t);
+    await db.insert(s.rfbRequests).values({ companyId: padaria.id, service: "debitos", state: "solicitada", requestedAt: now(), mode: "SIMULADO" });
+    const deps: ApuracaoDeps = { db, adapter: createReceitaAdapter(db, env, { now }), env, now };
+    expect((await syncCompany(deps, padaria.id, ["debitos"])).results[0].status).toBe("em_andamento");
+    clock.t += 3 * 60_000;
+    expect((await syncCompany(deps, padaria.id, ["debitos"])).results[0].status).toBe("aberta");
+    const rows = await db.select().from(s.rfbRequests).where(eq(s.rfbRequests.errorCode, "SEM_TIQUETE"));
+    expect(rows).toHaveLength(1);
+  });
+
   it("expira depois de 240 minutos", async () => {
     const clock = { t: Date.UTC(2026, 10, 25, 12) };
     const adapter: ReceitaAdapter = {

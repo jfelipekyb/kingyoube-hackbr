@@ -1,6 +1,6 @@
 // Agente Apuração (docs/09): abre as consultas da carteira, acompanha a situação, baixa e normaliza.
 // Máquina de estados de rfb_requests (docs/02); cada etapa grava agent_event "apuracao" (+ auditoria).
-import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { companies, effortStandards, rfbCredits, rfbDebits, rfbPayments, rfbRawFiles, rfbRequests } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { receitaMode, type Env } from "@/lib/config";
@@ -16,6 +16,8 @@ export type RequestRow = typeof rfbRequests.$inferSelect;
 
 export const OPEN_STATES = ["solicitada", "em_processamento", "concluida", "baixada"] as const satisfies RequestState[];
 export const EXPIRE_MINUTES = 240;
+/** Reserva sem tíquete além disso: a abertura morreu no meio (ex.: função encerrada). */
+export const RESERVATION_TIMEOUT_MS = 2 * 60_000;
 export const WINDOW_RISK_DAYS = 6;
 export const DEFAULT_DAILY_LIMIT = 4;
 
@@ -99,6 +101,22 @@ function modeTag(deps: ApuracaoDeps) {
   return deps.adapter.mode === "SIMULADO" ? " (simulado)" : "";
 }
 
+/** Reservas sem tíquete há mais de 2 min viram `erro` (continuam contando na cota). */
+async function abandonStaleReservations(db: Db, filter: { companyId?: string | null; service?: ReceitaService }, now: Date) {
+  await db
+    .update(rfbRequests)
+    .set({ state: "erro", errorCode: "SEM_TIQUETE", errorMessage: "abertura interrompida antes de receber o tíquete" })
+    .where(
+      and(
+        eq(rfbRequests.state, "solicitada"),
+        isNull(rfbRequests.ticket),
+        lt(rfbRequests.requestedAt, new Date(now.getTime() - RESERVATION_TIMEOUT_MS)),
+        filter.companyId ? eq(rfbRequests.companyId, filter.companyId) : undefined,
+        filter.service ? eq(rfbRequests.service, filter.service) : undefined,
+      ),
+    );
+}
+
 export type OpenResult =
   | { service: ReceitaService; status: "aberta"; requestId: string }
   | { service: ReceitaService; status: "em_andamento"; requestId: string }
@@ -114,6 +132,7 @@ export async function openConsulta(deps: ApuracaoDeps, company: Company, service
 
   const reserved = await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`rfb:${company.id}:${service}`}))`);
+    await abandonStaleReservations(tx, { companyId: company.id, service }, now);
     const [inFlight] = await tx
       .select({ id: rfbRequests.id })
       .from(rfbRequests)
@@ -311,6 +330,7 @@ export async function processRequest(deps: ApuracaoDeps, requestId: string): Pro
 
 /** Avança todas as solicitações em aberto (de um cliente ou da carteira). */
 export async function pollRequests(deps: ApuracaoDeps, filter: { companyId?: string | null } = {}) {
+  await abandonStaleReservations(deps.db, { companyId: filter.companyId }, nowOf(deps));
   const open = await deps.db
     .select({ id: rfbRequests.id })
     .from(rfbRequests)
