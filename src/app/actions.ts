@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
+import { demoRoleSwitchEnabled } from "@/lib/config";
 import { COMPANY_COOKIE, currentUser, ROLE_COOKIE } from "@/lib/demo-session";
 import { DEMO_USERS } from "@/seed/demo-data";
 import { recordAudit } from "@/services/auditoria";
@@ -10,6 +11,7 @@ import { recordAudit } from "@/services/auditoria";
 const cookieOptions = { httpOnly: true, sameSite: "lax" as const, path: "/", maxAge: 60 * 60 * 24 * 30 };
 
 export async function switchRole(role: string) {
+  if (!demoRoleSwitchEnabled()) throw new Error("Seletor de papel desligado (DEMO_ROLE_SWITCH=false)");
   const user = DEMO_USERS.find((u) => u.role === role);
   if (!user) throw new Error("Papel inválido");
   const previous = await currentUser();

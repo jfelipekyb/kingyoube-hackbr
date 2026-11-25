@@ -6,7 +6,7 @@ import { Nav } from "@/components/shell/nav";
 import { CompanySelector, RoleSelector } from "@/components/shell/selectors";
 import { getDb } from "@/db/client";
 import { demoToday } from "@/lib/clock";
-import { OFFICE_NAME, receitaMode } from "@/lib/config";
+import { demoRoleSwitchEnabled, OFFICE_NAME, receitaMode } from "@/lib/config";
 import { formatDateBR } from "@/lib/dates";
 import { currentCompanyId, currentUser } from "@/lib/demo-session";
 import { DEMO_USERS } from "@/seed/demo-data";
@@ -41,7 +41,13 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             <header className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b px-6 py-3">
               <div className="text-sm font-medium">{OFFICE_NAME}</div>
               <CompanySelector companies={companies} value={companyId} />
-              <RoleSelector value={user.role} users={DEMO_USERS.map((u) => ({ role: u.role, name: u.name }))} />
+              {demoRoleSwitchEnabled() ? (
+                <RoleSelector value={user.role} users={DEMO_USERS.map((u) => ({ role: u.role, name: u.name }))} />
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  {user.name} ({user.role})
+                </span>
+              )}
               <div className="ml-auto flex items-center gap-3">
                 {mode === "SIMULADO" ? (
                   <span className="text-xs text-muted-foreground">Hoje da demo: {formatDateBR(demoToday())}</span>
