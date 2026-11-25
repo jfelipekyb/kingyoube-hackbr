@@ -2,3 +2,4 @@
 
 | Sessão | Data | PR | Escopo | Duração | Testes | Correções humanas |
 |---|---|---|---|---|---|---|
+| S1 | 2026-11-25 | [S1] Fundação (branch `s1-fundacao`) | Next.js 15 + Tailwind + shadcn; modelo Drizzle completo de docs/02 (19 tabelas) com migrations e auditoria append-only; utilitários de centavos, CNPJ, chave, datas, relógio e PRNG; seed idempotente (12 clientes, 412 notas, 413 itens) e 48 fixtures da Receita; layout com menu, seletores e selo; Carteira, Radar, Equipe e Auditoria; rotas de reset e reiniciar; CI com verify, banco real e gitleaks; LICENSE MIT; DEPLOY.md; skill `verificar-entrega` instalada | 1 sessão | `npm run verify`: 12 arquivos, 62 testes; clone limpo com migrate + seed; navegador | Nenhuma até a revisão. Pendente: segredo `FORBIDDEN_TERMS` (P11) |
