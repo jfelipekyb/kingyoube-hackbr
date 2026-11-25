@@ -30,6 +30,7 @@ export function hashIp(ip: string): string {
 }
 
 export async function resetDemo(db: Db, actor: string, reason: string, env: Env = process.env): Promise<SeedCounts> {
+  if (!isSimulado(env)) throw new Error("Reset da demonstração só roda com RECEITA_MODE=SIMULADO");
   const counts = await seedDemo(db, { demoToday: demoToday(env), appUrl: env.APP_URL, actor, reason });
   await recordAudit(db, { actor, action: "demo.reset", entity: "base_demo", result: "ok", details: { reason, ...counts } });
   return counts;
