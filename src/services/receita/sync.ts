@@ -54,7 +54,10 @@ export function windowRisk(lastCompletedAt: Date | null, now: Date): { days: num
   return { days, atRisk: days >= WINDOW_RISK_DAYS };
 }
 
-export async function quotaUsed(db: Db, companyId: string, service: ReceitaService, now: Date): Promise<number> {
+type Mode = ReturnType<typeof receitaMode>;
+
+/** Pedidos de um modo não contam nem aparecem no outro (simulado × real na mesma base). */
+export async function quotaUsed(db: Db, companyId: string, service: ReceitaService, now: Date, mode: Mode): Promise<number> {
   const { start, end } = brasiliaDayBounds(now);
   const [row] = await db
     .select({ n: sql<number>`count(*)`.mapWith(Number) })
@@ -63,6 +66,7 @@ export async function quotaUsed(db: Db, companyId: string, service: ReceitaServi
       and(
         eq(rfbRequests.companyId, companyId),
         eq(rfbRequests.service, service),
+        eq(rfbRequests.mode, mode),
         gte(rfbRequests.requestedAt, start),
         lt(rfbRequests.requestedAt, end),
       ),
@@ -136,10 +140,17 @@ export async function openConsulta(deps: ApuracaoDeps, company: Company, service
     const [inFlight] = await tx
       .select({ id: rfbRequests.id })
       .from(rfbRequests)
-      .where(and(eq(rfbRequests.companyId, company.id), eq(rfbRequests.service, service), inArray(rfbRequests.state, [...OPEN_STATES])))
+      .where(
+        and(
+          eq(rfbRequests.companyId, company.id),
+          eq(rfbRequests.service, service),
+          eq(rfbRequests.mode, adapter.mode),
+          inArray(rfbRequests.state, [...OPEN_STATES]),
+        ),
+      )
       .limit(1);
     if (inFlight) return { kind: "em_andamento" as const, requestId: inFlight.id };
-    const used = await quotaUsed(tx, company.id, service, now);
+    const used = await quotaUsed(tx, company.id, service, now, adapter.mode);
     if (used >= limit) return { kind: "cota" as const, used };
     const { nonce, hash } = newWebhookNonce();
     const [row] = await tx
@@ -189,7 +200,7 @@ export async function syncCompany(deps: ApuracaoDeps, companyId: string, service
   const company = await loadCompany(deps.db, companyId);
   if (!company) throw new ReceitaError("REQUISICAO_INVALIDA", "cliente desconhecido", 400);
   const now = nowOf(deps);
-  const last = await lastCompleted(deps.db, [company.id]);
+  const last = await lastCompleted(deps.db, [company.id], deps.adapter.mode);
   const results: OpenResult[] = [];
   for (const service of services) {
     const risk = windowRisk(last.get(`${company.id}:${service}`) ?? null, now);
@@ -238,7 +249,7 @@ async function transition(
 export async function processRequest(deps: ApuracaoDeps, requestId: string): Promise<RequestState | null> {
   const { db } = deps;
   const [row] = await db.select().from(rfbRequests).where(eq(rfbRequests.id, requestId));
-  if (!row || !isOpen(row.state) || !row.ticket) return row?.state ?? null;
+  if (!row || !isOpen(row.state) || !row.ticket || row.mode !== deps.adapter.mode) return row?.state ?? null;
   const ticket = row.ticket;
   const [company] = await db
     .select({ id: companies.id, name: companies.name, cnpjRoot: companies.cnpjRoot })
@@ -337,6 +348,7 @@ export async function pollRequests(deps: ApuracaoDeps, filter: { companyId?: str
     .where(
       and(
         inArray(rfbRequests.state, [...OPEN_STATES]),
+        eq(rfbRequests.mode, deps.adapter.mode),
         filter.companyId ? eq(rfbRequests.companyId, filter.companyId) : undefined,
       ),
     )
@@ -349,12 +361,12 @@ export async function pollRequests(deps: ApuracaoDeps, filter: { companyId?: str
   return { processed };
 }
 
-async function lastCompleted(db: Db, companyIds: string[]): Promise<Map<string, Date>> {
+async function lastCompleted(db: Db, companyIds: string[], mode: Mode): Promise<Map<string, Date>> {
   if (companyIds.length === 0) return new Map();
   const rows = await db
     .select({ companyId: rfbRequests.companyId, service: rfbRequests.service, at: sql<string>`max(${rfbRequests.readyAt})::text` })
     .from(rfbRequests)
-    .where(and(eq(rfbRequests.state, "normalizada"), inArray(rfbRequests.companyId, companyIds)))
+    .where(and(eq(rfbRequests.state, "normalizada"), eq(rfbRequests.mode, mode), inArray(rfbRequests.companyId, companyIds)))
     .groupBy(rfbRequests.companyId, rfbRequests.service);
   return new Map(rows.filter((r) => r.at).map((r) => [`${r.companyId}:${r.service}`, new Date(r.at)]));
 }
@@ -381,7 +393,7 @@ export interface CompanySyncStatus {
 }
 
 export interface SyncOverview {
-  mode: ReturnType<typeof receitaMode>;
+  mode: Mode;
   generatedAt: string;
   open: number;
   companies: CompanySyncStatus[];
@@ -391,6 +403,7 @@ export interface SyncOverview {
 export async function syncOverview(db: Db, options: { companyId?: string | null; env?: Env; now?: Date } = {}): Promise<SyncOverview> {
   const now = options.now ?? new Date();
   const limit = dailyLimit(options.env);
+  const mode = receitaMode(options.env);
   const list = await db
     .select({ id: companies.id, name: companies.name })
     .from(companies)
@@ -402,15 +415,15 @@ export async function syncOverview(db: Db, options: { companyId?: string | null;
   const latest = await db
     .selectDistinctOn([rfbRequests.companyId, rfbRequests.service])
     .from(rfbRequests)
-    .where(inArray(rfbRequests.companyId, ids))
+    .where(and(inArray(rfbRequests.companyId, ids), eq(rfbRequests.mode, mode)))
     .orderBy(rfbRequests.companyId, rfbRequests.service, desc(rfbRequests.requestedAt));
   const { start, end } = brasiliaDayBounds(now);
   const quota = await db
     .select({ companyId: rfbRequests.companyId, service: rfbRequests.service, n: sql<number>`count(*)`.mapWith(Number) })
     .from(rfbRequests)
-    .where(and(inArray(rfbRequests.companyId, ids), gte(rfbRequests.requestedAt, start), lt(rfbRequests.requestedAt, end)))
+    .where(and(inArray(rfbRequests.companyId, ids), eq(rfbRequests.mode, mode), gte(rfbRequests.requestedAt, start), lt(rfbRequests.requestedAt, end)))
     .groupBy(rfbRequests.companyId, rfbRequests.service);
-  const last = await lastCompleted(db, ids);
+  const last = await lastCompleted(db, ids, mode);
   const countBy = async (table: typeof rfbDebits | typeof rfbCredits | typeof rfbPayments) => {
     const rows = await db
       .select({ companyId: table.companyId, n: sql<number>`count(*)`.mapWith(Number) })

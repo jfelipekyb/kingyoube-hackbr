@@ -213,6 +213,19 @@ describe("Agente Apuração em SIMULADO", () => {
     expect(rows).toHaveLength(1);
   });
 
+  it("pedidos simulados não contam nem aparecem no modo REAL", async () => {
+    const now = () => new Date("2026-11-25T12:00:00Z");
+    const deps: ApuracaoDeps = { db, adapter: createReceitaAdapter(db, env, { now }), env, now };
+    await syncCompany(deps, padaria.id, ["debitos"]);
+    const realEnv = { ...env, RECEITA_MODE: "REAL" };
+    const ov = await syncOverview(db, { companyId: padaria.id, env: realEnv, now: now() });
+    expect(ov.companies[0].services[0]).toMatchObject({ state: null, quotaUsed: 0 });
+    const getSituacao = vi.fn();
+    const realDeps: ApuracaoDeps = { db, adapter: { mode: "REAL", requestConsulta: vi.fn(), getSituacao, download: vi.fn(), gerarDarfRad: vi.fn() }, env: realEnv, now };
+    await pollRequests(realDeps);
+    expect(getSituacao).not.toHaveBeenCalled();
+  });
+
   it("expira depois de 240 minutos", async () => {
     const clock = { t: Date.UTC(2026, 10, 25, 12) };
     const adapter: ReceitaAdapter = {
