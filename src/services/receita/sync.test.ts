@@ -107,6 +107,20 @@ describe("Agente Apuração em SIMULADO", () => {
     expect(await n(s.rfbPayments)).toBe(2);
   });
 
+  it("polling concorrente do mesmo pedido grava o bruto uma vez só", async () => {
+    const clock = { t: Date.UTC(2026, 10, 25, 15) };
+    const now = () => new Date(clock.t);
+    const deps: ApuracaoDeps = { db, adapter: createReceitaAdapter(db, env, { now }), env, now };
+    await syncCompany(deps, padaria.id, ["debitos"]);
+    clock.t += 6_000;
+    await pollRequests(deps);
+    const [req] = await db.select().from(s.rfbRequests);
+    expect(req.state).toBe("normalizada");
+    await db.update(s.rfbRequests).set({ state: "concluida" });
+    await Promise.all([processRequest(deps, req.id), processRequest(deps, req.id)]);
+    expect(await db.select().from(s.rfbRawFiles)).toHaveLength(1);
+  });
+
   it("arquivo com atualizacao mais antiga não sobrescreve; mais nova atualiza", async () => {
     const adapter = createReceitaAdapter(db, env, { now: () => new Date(Date.UTC(2026, 10, 25, 15)) });
     const { ticket } = await adapter.requestConsulta(padaria.id, "debitos");

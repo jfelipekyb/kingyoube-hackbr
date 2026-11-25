@@ -21,17 +21,21 @@ export function maskNiConsumidor(raw: string, companyId: string): string {
 /** Guarda o bruto (append-only). O sha256 é do arquivo como veio; o payload sai com o `niConsumidor` mascarado. */
 export async function storeRawFile(db: Db, requestId: string, companyId: string, raw: string) {
   const hash = sha256(raw);
-  const [existing] = await db
-    .select({ id: rfbRawFiles.id })
-    .from(rfbRawFiles)
-    .where(and(eq(rfbRawFiles.requestId, requestId), eq(rfbRawFiles.sha256, hash)))
-    .limit(1);
-  if (existing) return { id: existing.id, sha256: hash };
-  const [row] = await db
-    .insert(rfbRawFiles)
-    .values({ requestId, sha256: hash, payload: sql`${maskNiConsumidor(raw, companyId)}::jsonb` })
-    .returning({ id: rfbRawFiles.id });
-  return { id: row.id, sha256: hash };
+  return db.transaction(async (tx) => {
+    // Duas telas acompanhando o mesmo pedido: a segunda espera e encontra o bruto já gravado.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`rfb-raw:${requestId}`}))`);
+    const [existing] = await tx
+      .select({ id: rfbRawFiles.id })
+      .from(rfbRawFiles)
+      .where(and(eq(rfbRawFiles.requestId, requestId), eq(rfbRawFiles.sha256, hash)))
+      .limit(1);
+    if (existing) return { id: existing.id, sha256: hash };
+    const [row] = await tx
+      .insert(rfbRawFiles)
+      .values({ requestId, sha256: hash, payload: sql`${maskNiConsumidor(raw, companyId)}::jsonb` })
+      .returning({ id: rfbRawFiles.id });
+    return { id: row.id, sha256: hash };
+  });
 }
 
 export interface NormalizeResult {
