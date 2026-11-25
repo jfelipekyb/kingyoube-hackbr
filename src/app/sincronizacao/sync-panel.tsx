@@ -59,11 +59,11 @@ export function SyncPanel({ initial, companyId }: { initial: SyncOverview; compa
   useEffect(() => setOverview(initial), [initial]);
 
   const call = useCallback(
-    async (path: string, body: Record<string, unknown>) => {
+    async (path: string, body: Record<string, unknown>, apply = true) => {
       const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(typeof json.erro === "string" ? json.erro : `Falha (HTTP ${res.status})`);
-      setOverview(json.overview as SyncOverview);
+      if (apply) setOverview(json.overview as SyncOverview);
       return json.overview as SyncOverview;
     },
     [],
@@ -97,7 +97,9 @@ export function SyncPanel({ initial, companyId }: { initial: SyncOverview; compa
     setElapsed(null);
     startedAt.current = Date.now();
     try {
-      await call("/api/receita/sync", { companyId: target });
+      // A resposta do sync vem filtrada pelo cliente pedido; a tela mostra o filtro da página.
+      await call("/api/receita/sync", { companyId: target }, target === companyId);
+      if (target !== companyId) await call("/api/receita/poll", { companyId });
     } catch (e) {
       setError((e as Error).message);
       startedAt.current = null;
