@@ -44,24 +44,29 @@ export async function reiniciarDemo(db: Db, ip: string, env: Env = process.env, 
   if (!isSimulado(env)) return { status: "indisponivel" };
   const ipHash = hashIp(ip);
   const since = new Date(now.getTime() - REINICIAR_WINDOW_MS);
-  const recent = await db
-    .select({ at: auditLog.at })
-    .from(auditLog)
-    .where(
-      and(
-        eq(auditLog.action, "demo.reiniciar"),
-        eq(auditLog.result, "ok"),
-        gt(auditLog.at, since),
-        sql`${auditLog.details}->>'ipHash' = ${ipHash}`,
-      ),
-    )
-    .limit(1);
-  if (recent.length > 0) {
-    const retry = Math.ceil((recent[0].at.getTime() + REINICIAR_WINDOW_MS - now.getTime()) / 1000);
-    await recordAudit(db, { actor: "sistema:reiniciar", action: "demo.reiniciar", entity: "base_demo", result: "limitado", details: { ipHash } });
-    return { status: "limitado", retryAfterSeconds: Math.max(retry, 1) };
-  }
-  await recordAudit(db, { actor: "sistema:reiniciar", action: "demo.reiniciar", entity: "base_demo", result: "ok", details: { ipHash }, at: now });
+  const retryAfterSeconds = await db.transaction(async (tx) => {
+    // Serializa chamadas simultâneas do mesmo IP: a segunda só lê depois que a primeira gravou.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${ipHash}))`);
+    const recent = await tx
+      .select({ at: auditLog.at })
+      .from(auditLog)
+      .where(
+        and(
+          eq(auditLog.action, "demo.reiniciar"),
+          eq(auditLog.result, "ok"),
+          gt(auditLog.at, since),
+          sql`${auditLog.details}->>'ipHash' = ${ipHash}`,
+        ),
+      )
+      .limit(1);
+    if (recent.length > 0) {
+      await recordAudit(tx, { actor: "sistema:reiniciar", action: "demo.reiniciar", entity: "base_demo", result: "limitado", details: { ipHash } });
+      return Math.max(Math.ceil((recent[0].at.getTime() + REINICIAR_WINDOW_MS - now.getTime()) / 1000), 1);
+    }
+    await recordAudit(tx, { actor: "sistema:reiniciar", action: "demo.reiniciar", entity: "base_demo", result: "ok", details: { ipHash }, at: now });
+    return null;
+  });
+  if (retryAfterSeconds !== null) return { status: "limitado", retryAfterSeconds };
   const counts = await resetDemo(db, "sistema:reiniciar", "botão público", env);
   return { status: "ok", counts };
 }

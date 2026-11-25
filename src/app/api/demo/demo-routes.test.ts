@@ -52,6 +52,13 @@ describe("POST /api/demo/reiniciar", () => {
     expect(Number(n.n)).toBe(412);
   });
 
+  it("2 chamadas simultâneas do mesmo IP → só uma reinicia", async () => {
+    vi.stubEnv("RECEITA_MODE", "SIMULADO");
+    const headers = { "x-forwarded-for": "192.0.2.50" };
+    const results = await Promise.all([reiniciar(req("/api/demo/reiniciar", headers)), reiniciar(req("/api/demo/reiniciar", headers))]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 429]);
+  });
+
   it("não guarda o IP em claro na auditoria", async () => {
     const rows = await db.select().from(auditLog);
     expect(JSON.stringify(rows)).not.toContain("203.0.113.7");
