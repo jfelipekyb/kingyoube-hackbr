@@ -5,6 +5,7 @@ import "./globals.css";
 import { Logo } from "@/components/shell/logo";
 import { ModeBadge } from "@/components/shell/mode-badge";
 import { Nav } from "@/components/shell/nav";
+import { PageTransition } from "@/components/shell/page-transition";
 import { CompanySelector, RoleSelector } from "@/components/shell/selectors";
 import { getDb } from "@/db/client";
 import { demoToday } from "@/lib/clock";
@@ -73,7 +74,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
               </div>
             </header>
             <main id="conteudo" className="mx-auto w-full max-w-(--kyb-largura-max) flex-1 p-6">
-              {children}
+              <PageTransition>{children}</PageTransition>
             </main>
           </div>
         </div>

@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "../styles/tokens.css";
 @import "../styles/typography.css";
+@import "../styles/motion.css";
 
 @theme inline {
   --color-background: var(--background);

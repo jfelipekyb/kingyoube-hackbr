@@ -1,0 +1,177 @@
+/*
+ * Movimentos da marca (docs/10, seção 4). Só transform e opacity
+ * (exceto o traço do check, que é desenho de SVG). Curva padrão: --kyb-curva.
+ * Nenhuma animação passa de 1,2s, exceto os loops "trabalhando" e "Kim falando".
+ */
+
+@keyframes kyb-coroa {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes kyb-balao {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes kyb-entrada {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes kyb-anel {
+  0% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+@keyframes kyb-traco {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes kyb-destaque {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes kyb-tremer {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes kyb-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes kyb-brilho {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Logo, ao abrir o app: sobe 4px e volta, uma vez. */
+.kyb-logo-entrada .kyb-coroa,
+.kyb-logo-entrada > img {
+  animation: kyb-coroa 600ms var(--kyb-curva) 1 both;
+}
+
+/* Balão da Kim enquanto o áudio toca. */
+.kyb-falando {
+  animation: kyb-balao 1200ms var(--kyb-curva) infinite;
+  transform-origin: center;
+}
+
+/* Entrada em sequência: 50ms entre um item e outro (style="--kyb-ordem: n"). */
+.kyb-entrada {
+  animation: kyb-entrada 250ms var(--kyb-curva) both;
+  animation-delay: calc(var(--kyb-ordem, 0) * 50ms);
+}
+
+/* Agente "trabalhando": anel verde pulsando ao redor do ícone. */
+.kyb-trabalhando {
+  position: relative;
+}
+.kyb-trabalhando::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--kyb-raio-selo);
+  border: 2px solid var(--kyb-verde);
+  animation: kyb-anel 1600ms var(--kyb-curva) infinite;
+  pointer-events: none;
+}
+
+/* Agente "feito": check desenhado (path com pathLength="1"). */
+.kyb-check-traco {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: kyb-traco 300ms var(--kyb-curva) both;
+}
+
+/* Item que muda de status: fundo verde claro que some aos poucos. */
+.kyb-destaque,
+.kyb-destaque > td {
+  position: relative;
+}
+.kyb-destaque:not(tr)::after,
+.kyb-destaque > td::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--kyb-verde) 18%, transparent);
+  animation: kyb-destaque 1200ms var(--kyb-curva) both;
+  pointer-events: none;
+}
+
+/* Botão bloqueado pela trava: tremida curta horizontal. */
+.kyb-tremer {
+  animation: kyb-tremer 300ms var(--kyb-curva) 1;
+}
+
+/* Troca de página. */
+.kyb-pagina {
+  animation: kyb-fade 150ms var(--kyb-curva) both;
+}
+
+/* Carregando: esqueleto com brilho suave. */
+.kyb-esqueleto {
+  position: relative;
+  overflow: hidden;
+  background: var(--kyb-canvas-2);
+}
+.kyb-esqueleto::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--kyb-branco) 70%, transparent), transparent);
+  animation: kyb-brilho 1200ms var(--kyb-curva) infinite;
+}
+
+/* Movimento reduzido: fica só a troca de estado, sem animação. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
