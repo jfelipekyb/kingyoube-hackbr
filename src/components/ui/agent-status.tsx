@@ -1,9 +1,9 @@
-import type { LucideIcon } from "lucide-react";
+import { CircleAlert, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type AgentState = "parado" | "trabalhando" | "feito";
+export type AgentState = "parado" | "trabalhando" | "feito" | "revisado_divergente" | "erro";
 
-const STATE_LABEL: Record<AgentState, string> = { parado: "parado", trabalhando: "trabalhando", feito: "feito" };
+const STATE_LABEL: Record<AgentState, string> = { parado: "parado", trabalhando: "trabalhando", feito: "feito", revisado_divergente: "apontou diferença", erro: "erro" };
 
 /** Check desenhado em traço SVG (300ms). */
 export function CheckDraw({ className }: { className?: string }) {
@@ -26,7 +26,7 @@ export function AgentStatus({ name, icon: Icon, state, className }: { name: stri
           state === "feito" && "bg-kyb-verde text-kyb-azul",
         )}
       >
-        {state === "feito" ? <CheckDraw /> : <Icon aria-hidden className="size-4" strokeWidth={1.75} />}
+        {state === "feito" ? <CheckDraw /> : state === "revisado_divergente" || state === "erro" ? <CircleAlert aria-hidden className="size-4" strokeWidth={2} /> : <Icon aria-hidden className="size-4" strokeWidth={1.75} />}
       </span>
       <span>
         {name}

@@ -1,25 +1,24 @@
 import { PageHeader } from "@/components/under-construction";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getDb } from "@/db/client";
 import { AGENTS } from "@/services/equipe/agents";
+import { latestRun, ROUND_AGENTS } from "@/services/equipe/run";
+import { runSnapshot } from "@/services/equipe/snapshot";
+import { SalaDaEquipe } from "./sala-da-equipe";
 
-export default function EquipeAoVivoPage() {
+export const dynamic = "force-dynamic";
+
+export default async function SalaDaEquipePage() {
+  const db = getDb();
+  const last = await latestRun(db);
+  const initial = last ? await runSnapshot(db, last.id) : null;
+  const agents = ROUND_AGENTS.map((k) => AGENTS.find((a) => a.key === k)!).map((a) => ({ key: a.key, name: a.name, role: a.role }));
   return (
     <>
       <PageHeader
-        title="Equipe ao vivo"
-        description="A sala onde cada agente mostra o que está fazendo. A rodada da equipe chega na sessão S6; por enquanto todos estão parados."
+        title="Sala da Equipe"
+        description="Cada agente faz a sua parte da conferência da carteira e mostra o que entregou. O Conferente refaz tudo do zero; no fim, o que precisa da sua decisão."
       />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {AGENTS.map((agent) => (
-          <Card key={agent.key} size="sm">
-            <CardHeader>
-              <CardTitle>{agent.name}</CardTitle>
-              <CardDescription>{agent.role}</CardDescription>
-            </CardHeader>
-            <CardContent className="text-xs text-muted-foreground">Parado · nenhuma rodada ainda</CardContent>
-          </Card>
-        ))}
-      </div>
+      <SalaDaEquipe agents={agents} initial={initial} />
     </>
   );
 }
