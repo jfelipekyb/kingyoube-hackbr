@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { availableSteps, readTourSeen, TOUR_SEEN_KEY, TOUR_STEPS, writeTourSeen } from "./tour-steps";
+import { availableSteps, pickTarget, readTourSeen, TOUR_SEEN_KEY, TOUR_STEPS, writeTourSeen } from "./tour-steps";
 
 describe("tour guiado (docs/10, seção 5)", () => {
   it("tem os 8 passos na ordem do documento", () => {
@@ -32,5 +32,13 @@ describe("tour guiado (docs/10, seção 5)", () => {
     expect(readTourSeen(broken)).toBe(false);
     expect(() => writeTourSeen(broken)).not.toThrow();
     expect(readTourSeen(undefined)).toBe(false);
+  });
+});
+
+describe("pickTarget", () => {
+  it("prefere o elemento da tela ao do menu, se visível", () => {
+    expect(pickTarget(["menu", "tabela"], () => true)).toBe("tabela");
+    expect(pickTarget(["menu", "tabela"], (e) => e === "menu")).toBe("menu");
+    expect(pickTarget(["menu"], () => false)).toBeNull();
   });
 });
