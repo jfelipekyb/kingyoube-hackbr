@@ -1,5 +1,5 @@
 import { asc, eq } from "drizzle-orm";
-import { ArrowLeft, FileText, Landmark, Receipt } from "lucide-react";
+import { ArrowLeft, FileText, FlaskConical, Landmark, Mail, MessageCircle, Receipt } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/under-construction";
@@ -13,6 +13,7 @@ import { formatCnpj } from "@/lib/cnpj";
 import { formatDateBR } from "@/lib/dates";
 import { currentUser } from "@/lib/demo-session";
 import { formatBRL } from "@/lib/money";
+import { messagesFor, refreshEmailStatus, SIMULATED_STATUS } from "@/services/notificacao";
 import { getProposal, proposalSupplier, RadError } from "@/services/rad";
 import { RadActions } from "./actions";
 
@@ -46,6 +47,9 @@ export default async function RadProposalPage({ params }: { params: Promise<{ id
     currentUser(),
     db.select().from(auditLog).where(eq(auditLog.entityId, p.id)).orderBy(asc(auditLog.at)),
   ]);
+  const messages = await Promise.all((await messagesFor(db, p.id)).map((m) => (m.channel === "email" ? refreshEmailStatus({ db }, m) : m)));
+  const email = messages.find((m) => m.channel === "email");
+  const whatsapp = messages.find((m) => m.channel === "whatsapp");
   const suggested = inv?.cbsCents ?? 0n;
 
   return (
@@ -136,6 +140,43 @@ export default async function RadProposalPage({ params }: { params: Promise<{ id
           </Card>
         )}
 
+        {(email || whatsapp) && (
+          <Card className="lg:col-span-2" data-tour="rad-mensagens">
+            <CardHeader>
+              <CardTitle>Mensageiro</CardTitle>
+              <CardDescription>DARF enviado ao financeiro do cliente. Reenviar não duplica (chave de idempotência por DARF).</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 lg:grid-cols-2">
+              {email && (
+                <div className="space-y-2" data-channel="email">
+                  <p className="flex items-center gap-2 font-semibold">
+                    <Mail aria-hidden className="size-4 text-kyb-azul" strokeWidth={1.75} /> E-mail
+                    <MessageStatus status={email.lastStatus} />
+                  </p>
+                  <dl>
+                    <Row label="Para" value={email.toLabel} />
+                    <Row label="Assunto" value={email.body ?? "—"} />
+                    <Row label="Chave de idempotência" value={<span className="font-mono text-xs">{email.idempotencyKey}</span>} />
+                  </dl>
+                </div>
+              )}
+              {whatsapp && (
+                <div className="space-y-2" data-channel="whatsapp">
+                  <p className="flex items-center gap-2 font-semibold">
+                    <MessageCircle aria-hidden className="size-4 text-kyb-azul" strokeWidth={1.75} /> WhatsApp
+                    <MessageStatus status={whatsapp.lastStatus} />
+                  </p>
+                  <div className="rounded-kyb-botao border border-kyb-linha bg-kyb-canvas-2 p-3" aria-label="Prévia da conversa no WhatsApp">
+                    <p className="mb-2 text-xs text-kyb-mudo">{whatsapp.toLabel}</p>
+                    <div className="ml-auto max-w-md rounded-kyb-botao bg-kyb-branco p-3 text-sm whitespace-pre-line shadow-sm">{whatsapp.body}</div>
+                    <p className="mt-1 text-right text-xs text-kyb-mudo">{dateTime.format(whatsapp.createdAt)}</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -157,5 +198,20 @@ export default async function RadProposalPage({ params }: { params: Promise<{ id
         </Card>
       </div>
     </>
+  );
+}
+
+function MessageStatus({ status }: { status: string | null }) {
+  if (status === SIMULATED_STATUS) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-kyb-selo border border-kyb-linha bg-kyb-canvas-2 px-2 py-0.5 text-xs font-semibold text-kyb-azul" data-status="simulado">
+        <FlaskConical aria-hidden className="size-3.5" strokeWidth={1.75} /> simulado
+      </span>
+    );
+  }
+  return (
+    <span className="rounded-kyb-selo border border-kyb-linha px-2 py-0.5 text-xs font-semibold" data-status={status ?? ""}>
+      {status ?? "—"}
+    </span>
   );
 }
