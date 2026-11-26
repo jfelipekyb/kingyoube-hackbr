@@ -193,6 +193,9 @@ async function reconcileOne(deps: ConciliacaoDeps, companyId: string, period: st
           explanationOriginal: sql`excluded.explanation_original`,
           computedAt: sql`excluded.computed_at`,
           contractVersion: sql`excluded.contract_version`,
+          reviewStatus: null,
+          reviewedAt: null,
+          reviewNote: null,
         },
       });
   }
