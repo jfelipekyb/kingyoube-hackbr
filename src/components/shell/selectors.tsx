@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { selectCompany, switchRole } from "@/app/actions";
 
 const selectClass =
-  "h-8 rounded-md border border-input bg-background px-2 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60";
+  "h-9 rounded-kyb-botao border border-kyb-linha bg-kyb-branco px-2.5 text-sm text-kyb-azul transition-colors duration-150 ease-kyb hover:border-kyb-azul focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kyb-azul-2 disabled:opacity-60";
 
 export function CompanySelector({ companies, value }: { companies: { id: string; name: string }[]; value: string | null }) {
   const [pending, start] = useTransition();

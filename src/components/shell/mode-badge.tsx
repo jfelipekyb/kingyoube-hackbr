@@ -1,19 +1,17 @@
+import { FlaskConical, ShieldCheck } from "lucide-react";
 import { SIMULATED_BADGE, type ReceitaMode } from "@/lib/config";
 
 export function ModeBadge({ mode }: { mode: ReceitaMode }) {
-  if (mode === "SIMULADO") {
-    return (
-      <span
-        role="status"
-        className="inline-flex items-center rounded-md border border-amber-300 bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900"
-      >
-        {SIMULATED_BADGE}
-      </span>
-    );
-  }
+  const simulado = mode === "SIMULADO";
+  const Icon = simulado ? FlaskConical : ShieldCheck;
   return (
-    <span role="status" className="inline-flex items-center rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-900">
-      Modo REAL — consulta à Receita Federal
+    <span
+      role="status"
+      data-tour={simulado ? "selo-simulado" : undefined}
+      className="inline-flex items-center gap-1.5 rounded-kyb-selo border border-kyb-linha bg-kyb-canvas-2 px-3 py-1 text-secundario text-kyb-azul"
+    >
+      <Icon aria-hidden className="size-3.5" strokeWidth={1.75} />
+      {simulado ? SIMULATED_BADGE : "Modo REAL — consulta à Receita Federal"}
     </span>
   );
 }
