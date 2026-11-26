@@ -1,4 +1,5 @@
 // Radar da documentação oficial (docs/05): Firecrawl com changeTracking, fila de 9 páginas abaixo de 10/min.
+import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { docWatch } from "@/db/schema";
 import type { Db } from "@/db/types";
@@ -82,24 +83,27 @@ export async function checkDocs(deps: RadarDeps, actor = "sistema:cron"): Promis
       const diffText = changed
         ? (ct.diff?.text ?? (firecrawl === "removed" ? "A página saiu do ar." : `Versão ${previousVersion} → ${version}.`)).slice(0, MAX_DIFF)
         : null;
+      // "mudou" sem "alertado" = alerta anterior falhou: tenta de novo mesmo sem mudança nova.
+      const alertDue = changed || row?.changeStatus === "mudou";
+      const alertDiff = changed ? diffText : (row?.diffText ?? null);
       const at = now();
       const values = {
         title: spec.title,
         lastVersion: version,
         lastCheckedAt: at,
-        changeStatus: changed ? ("mudou" as const) : ("sem_mudanca" as const),
+        changeStatus: alertDue ? ("mudou" as const) : ("sem_mudanca" as const),
         ...(changed ? { diffText, alertedAt: null } : {}),
       };
       const [saved] = row
         ? await db.update(docWatch).set(values).where(eq(docWatch.id, row.id)).returning()
         : await db.insert(docWatch).values({ url, ...values }).returning();
       let alerted = false;
-      if (changed) {
+      if (alertDue) {
         const label = `${spec.title} ${previousVersion ?? "?"} → ${version ?? "?"}`;
         const { row: email } = await sendEmailOnce(deps, {
           kind: "alerta_radar",
           refId: saved.id,
-          key: `radar-${saved.id}-${version ?? "sem-versao"}-${at.toISOString().slice(0, 10)}`,
+          key: `radar-${saved.id}-${version ?? "sem-versao"}-${createHash("sha256").update(alertDiff ?? "").digest("hex").slice(0, 12)}`,
           to: env.ALERT_EMAIL,
           fallbackLabel: "time (ALERT_EMAIL não cadastrado)",
           subject: `Contrato da Receita mudou: ${label}`,
@@ -108,7 +112,7 @@ export async function checkDocs(deps: RadarDeps, actor = "sistema:cron"): Promis
             `Página: ${url}`,
             codeOutdated ? `O código implementa a versão ${spec.version}: código desatualizado.` : "A versão do código continua compatível; confira o diff.",
             "Diff (git-diff do Firecrawl):",
-            (diffText ?? "").slice(0, 4_000),
+            (alertDiff ?? "").slice(0, 4_000),
           ],
         });
         alerted = email.lastStatus !== "erro";
