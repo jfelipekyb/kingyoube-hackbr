@@ -37,7 +37,7 @@ export function Nav() {
   return (
     <nav aria-label="Menu principal" className="flex flex-col gap-0.5">
       {NAV_ITEMS.map(({ href, label, icon: Icon, tour }) => {
-        const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+        const active = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
             key={href}
