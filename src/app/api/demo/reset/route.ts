@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/db/client";
+import { isSimulado } from "@/lib/config";
 import { recordAudit } from "@/services/auditoria";
 import { isAuthorizedCron, resetDemo } from "@/services/demo";
 
 export const dynamic = "force-dynamic";
 
 async function handle(request: Request) {
+  if (!isSimulado()) {
+    return NextResponse.json({ erro: "reset da demonstração só existe no modo SIMULADO" }, { status: 409 });
+  }
   const db = getDb();
   if (!isAuthorizedCron(request.headers.get("authorization"))) {
     await recordAudit(db, { actor: "sistema:cron", action: "demo.reset", entity: "base_demo", result: "nao_autorizado" });

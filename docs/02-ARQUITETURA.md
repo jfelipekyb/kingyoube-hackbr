@@ -85,7 +85,7 @@ Transições só pelos serviços; cada transição grava auditoria.
 | `POST /api/kim/ouvir` | Áudio → texto (ElevenLabs speech-to-text); não guarda o áudio |
 | `POST /api/kim/perguntar` | Texto → intenção → resposta a partir da base |
 | `POST /api/kim/falar` | Texto → áudio (ElevenLabs text-to-speech) |
-| `POST /api/demo/reset` | Recria a base de demonstração (protegida por `CRON_SECRET`; Vercel Cron diário) |
+| `POST /api/demo/reset` | Recria a base de demonstração (protegida por `CRON_SECRET`; Vercel Cron diário); só em SIMULADO, em REAL responde 409 sem tocar na base |
 | `POST /api/demo/reiniciar` | Botão público de reinício, só em SIMULADO, 1/min por IP |
 | `GET /demo/fornecedores/[slug]` | Página pública do site fictício do fornecedor (lida pelo Firecrawl) |
 
@@ -110,9 +110,10 @@ Transições só pelos serviços; cada transição grava auditoria.
 | `ALERT_EMAIL` | sim | Destinatário dos alertas do radar |
 | `RFB_CLIENT_ID`, `RFB_CLIENT_SECRET`, `RFB_TOKEN_URL`, `RFB_CNPJ` | só no modo REAL | Credencial da Receita |
 | `RFB_DAILY_LIMIT` | não (padrão 4) | Cota por serviço e dia |
-| `CRON_SECRET` | sim | Protege as rotas chamadas pelo Vercel Cron |
+| `CRON_SECRET` | sim | Protege as rotas chamadas pelo Vercel Cron; em `REAL`, também exigido (`Authorization: Bearer`) em `POST /api/receita/sync` e `/poll` |
 | `ANTHROPIC_API_KEY`, `LLM_MODEL` | não | Explicação redigida por LLM; sem eles, usa texto determinístico |
 | `FORBIDDEN_TERMS` | só no Devin | Regex de termos que nunca podem ir ao repositório (usado pela skill `verificar-entrega`) |
 | `RAD_CNPJ_FORMAT` | não (padrão 14) | Formato do CNPJ no path do RAD (pendência P3) |
+| `PII_HASH_KEY` | só no modo REAL (sem ela o REAL não sobe) | Chave do HMAC-SHA256 do `niConsumidor` guardado no arquivo bruto (docs/07); em SIMULADO usa uma chave fixa de demonstração |
 
 `.env.example` lista todas, sem valores.

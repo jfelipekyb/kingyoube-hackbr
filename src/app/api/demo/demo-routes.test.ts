@@ -30,6 +30,18 @@ describe("POST /api/demo/reset", () => {
     expect((await resetGet(req("/api/demo/reset"))).status).toBe(401);
   });
 
+  it("em modo REAL → 409 sem tocar na base, mesmo com o segredo certo (POST e GET)", async () => {
+    vi.stubEnv("CRON_SECRET", "segredo-de-teste");
+    vi.stubEnv("RECEITA_MODE", "REAL");
+    const marker = await db.select({ n: count() }).from(auditLog);
+    const auth = { authorization: "Bearer segredo-de-teste" };
+    expect((await reset(req("/api/demo/reset", auth))).status).toBe(409);
+    expect((await resetGet(req("/api/demo/reset", auth))).status).toBe(409);
+    expect((await reset(req("/api/demo/reset"))).status).toBe(409);
+    const [audit] = await db.select({ n: count() }).from(auditLog);
+    expect(audit.n).toBe(marker[0].n);
+  });
+
   it("com o segredo certo recria a base", async () => {
     vi.stubEnv("CRON_SECRET", "segredo-de-teste");
     const res = await reset(req("/api/demo/reset", { authorization: "Bearer segredo-de-teste" }));
@@ -64,8 +76,11 @@ describe("POST /api/demo/reiniciar", () => {
     expect(JSON.stringify(rows)).not.toContain("203.0.113.7");
   });
 
-  it("em modo REAL não existe → 404", async () => {
+  it("em modo REAL → 409 sem tocar na base", async () => {
     vi.stubEnv("RECEITA_MODE", "REAL");
-    expect((await reiniciar(req("/api/demo/reiniciar", { "x-forwarded-for": "192.0.2.1" }))).status).toBe(404);
+    const before = await db.select({ n: count() }).from(auditLog);
+    expect((await reiniciar(req("/api/demo/reiniciar", { "x-forwarded-for": "192.0.2.1" }))).status).toBe(409);
+    const after = await db.select({ n: count() }).from(auditLog);
+    expect(after[0].n).toBe(before[0].n);
   });
 });
