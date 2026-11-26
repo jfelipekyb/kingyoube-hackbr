@@ -54,7 +54,7 @@ export function createReceitaAdapter(
       },
       findDocument: async (companyId, accessKey) => {
         const [inv] = await db
-          .select({ cbsCents: invoices.cbsCents })
+          .select({ cbsCents: invoices.cbsCents, direction: invoices.direction })
           .from(invoices)
           .where(and(eq(invoices.companyId, companyId), eq(invoices.accessKey, accessKey)));
         return inv ?? null;

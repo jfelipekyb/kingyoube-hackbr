@@ -61,7 +61,8 @@ export const radProposalState = pgEnum("rad_proposal_state", [
   "erro_receita",
   "vencida",
 ]);
-export const outboundEmailKind = pgEnum("outbound_email_kind", ["darf", "cobranca_fornecedor", "alerta_radar"]);
+export const outboundMessageKind = pgEnum("outbound_email_kind", ["darf", "cobranca_fornecedor", "alerta_radar"]);
+export const outboundChannel = pgEnum("outbound_channel", ["email", "whatsapp"]);
 export const docChangeStatus = pgEnum("doc_change_status", ["sem_mudanca", "mudou", "alertado"]);
 export const agentRunStatus = pgEnum("agent_run_status", ["rodando", "concluida", "erro"]);
 export const agentKey = pgEnum("agent_key", [
@@ -291,24 +292,34 @@ export const radProposals = pgTable("rad_proposals", {
   principalCents: cents("principal_cents"),
   totalCents: cents("total_cents"),
   rfbReturnCode: text("rfb_return_code"),
+  rfbMessage: text("rfb_message"),
+  awareOfRefusal: boolean("aware_of_refusal").notNull().default(false),
+  rejectionReason: text("rejection_reason"),
+  submittedAt: timestamp("submitted_at", { withTimezone: true }),
+  darfGeneratedAt: timestamp("darf_generated_at", { withTimezone: true }),
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  paidPrincipalCents: cents("paid_principal_cents"),
+  divergenceRule: varchar("divergence_rule", { length: 3 }),
   createdAt: createdAt(),
 });
 
-export const outboundEmails = pgTable("outbound_emails", {
+export const outboundMessages = pgTable("outbound_messages", {
   id: uuid("id").primaryKey().defaultRandom(),
-  kind: outboundEmailKind("kind").notNull(),
+  channel: outboundChannel("channel").notNull().default("email"),
+  kind: outboundMessageKind("kind").notNull(),
   refId: text("ref_id").notNull(),
   toLabel: text("to_label").notNull(),
   resendId: text("resend_id"),
   idempotencyKey: varchar("idempotency_key", { length: 256 }).notNull().unique(),
   createdAt: createdAt(),
   lastStatus: text("last_status"),
+  body: text("body"),
 });
 
 export const emailEvents = pgTable("email_events", {
   id: uuid("id").primaryKey().defaultRandom(),
   emailId: text("email_id").notNull(),
-  outboundEmailId: uuid("outbound_email_id").references(() => outboundEmails.id),
+  outboundMessageId: uuid("outbound_message_id").references(() => outboundMessages.id),
   type: text("type").notNull(),
   receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
   rawHash: varchar("raw_hash", { length: 64 }).notNull(),
