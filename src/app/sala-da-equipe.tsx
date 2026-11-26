@@ -127,6 +127,19 @@ export function SalaDaEquipe({ agents, initial }: { agents: AgentCard[]; initial
                 <p className={cn("text-sm", step?.summary ? "font-semibold" : "text-muted-foreground")} data-summary>
                   {step?.summary ?? (state === "parado" ? "Aguardando a rodada." : "Trabalhando…")}
                 </p>
+                {isConferente && step?.status === "revisado_divergente" && snap?.decisions ? (
+                  <ul className="flex flex-col gap-1 text-secundario">
+                    {snap.decisions
+                      .filter((d) => d.kind === "conferente")
+                      .map((d) => (
+                        <li key={d.href}>
+                          <Link href={d.href} className="font-semibold text-kyb-erro underline underline-offset-4">
+                            {d.title}
+                          </Link>
+                        </li>
+                      ))}
+                  </ul>
+                ) : null}
               </li>
             );
           })}
