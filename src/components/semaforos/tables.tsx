@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BadgeCheck } from "lucide-react";
+import { BadgeCheck, CircleDashed } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LightBadge } from "@/components/ui/light-badge";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -9,14 +9,14 @@ import { formatDateBR, brasiliaDay } from "@/lib/dates";
 import { maskEmail } from "@/lib/mask";
 import { formatBRL } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import type { CustomerRow, Light, SupplierRow } from "@/services/semaforos";
+import type { CustomerRow, Light, LightCounts, SupplierRow } from "@/services/semaforos";
 
 const shortName = (name: string | null) => (name ?? "—").replace(/\s*\(FICTÍCIA\)$/, "");
 const RAD_AGREEMENT: Record<SupplierRow["radAgreement"], string> = { aceita: "aceita o RAD", recusa: "recusou o RAD", sem_resposta: "sem resposta" };
 const RECEIPT: Record<NonNullable<CustomerRow["receipt"]>, string> = { recebido: "recebido", a_receber: "a receber", vencido: "vencido" };
 
-/** Contagem por cor que também é o filtro (link). */
-export function LightFilter({ counts, active, hrefFor }: { counts: Record<Light, number>; active: Light | null; hrefFor: (l: Light | null) => string }) {
+/** Contagem por cor que também é o filtro (link). Só conta o que tem dado da Receita. */
+export function LightFilter({ counts, active, hrefFor }: { counts: LightCounts; active: Light | null; hrefFor: (l: Light | null) => string }) {
   const total = counts.verde + counts.amarelo + counts.vermelho;
   const item = (l: Light | null, content: React.ReactNode) => (
     <Link
@@ -42,6 +42,12 @@ export function LightFilter({ counts, active, hrefFor }: { counts: Record<Light,
             <span className="font-semibold tabular-nums">{counts[l]}</span>
           </>,
         ),
+      )}
+      {counts.aguardando > 0 && (
+        <span className="inline-flex items-center gap-2 px-1 py-2 text-sm text-kyb-mudo" data-light="aguardando">
+          <CircleDashed aria-hidden className="size-4" strokeWidth={1.75} />
+          {counts.aguardando} aguardando sincronização com a Receita (fora da contagem por cor)
+        </span>
       )}
     </nav>
   );

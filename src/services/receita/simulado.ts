@@ -37,7 +37,7 @@ export interface SimuladoDeps {
   fixturesDir?: string;
   /** Por raiz do CNPJ do cliente (o tíquete só carrega a raiz). */
   radCollections?: (cnpjRoot: string) => Promise<SimulatedRadCollection[]>;
-  findDocument?: (companyId: string, accessKey: string) => Promise<{ cbsCents: bigint } | null>;
+  findDocument?: (companyId: string, accessKey: string) => Promise<{ cbsCents: bigint; direction?: "compra" | "venda" } | null>;
 }
 
 /** Fases do assíncrono simulado em ms: PENDENTE até `pendente`, EM_PROCESSAMENTO até `concluida`. */
@@ -155,6 +155,7 @@ export class SimuladoAdapter implements ReceitaAdapter {
     for (const item of items) {
       const doc = (await this.deps.findDocument?.(companyId, item.chaveDFE)) ?? null;
       if (!doc) return { cdRetorno: "DFE_NAO_ENCONTRADO", mensagem: "Documento fiscal não encontrado." };
+      if (doc.direction === "venda") return { cdRetorno: "CNPJ_NAO_ADQUIRENTE", mensagem: "CNPJ não é o adquirente do documento." };
       if (item.opcaoPagamento === "PAGAMENTO_PARCIAL") {
         const partial = item.valorDarfParcialCents;
         if (partial === undefined || partial <= 0n) {

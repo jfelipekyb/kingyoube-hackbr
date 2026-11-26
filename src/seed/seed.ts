@@ -27,7 +27,7 @@ export interface SeedCounts {
 /** Tabelas apagadas no reset, em ordem segura para as chaves estrangeiras. audit_log fica. */
 const RESET_ORDER = [
   s.emailEvents,
-  s.outboundEmails,
+  s.outboundMessages,
   s.radProposals,
   s.reconciliationItems,
   s.rfbPayments,

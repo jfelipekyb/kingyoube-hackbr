@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 export type StatusTone = "conciliado" | "atencao" | "divergente" | "aguardando";
 
 const TONES: Record<StatusTone, { icon: LucideIcon; label: string; className: string }> = {
-  conciliado: { icon: CircleCheck, label: "Conciliado", className: "border-kyb-verde/50 bg-kyb-verde/10 text-kyb-verde-texto" },
-  atencao: { icon: CircleAlert, label: "Atenção", className: "border-kyb-alerta/40 bg-kyb-alerta/10 text-kyb-alerta" },
-  divergente: { icon: CircleX, label: "Divergente", className: "border-kyb-erro/40 bg-kyb-erro/10 text-kyb-erro" },
+  conciliado: { icon: CircleCheck, label: "Conciliado", className: "border-kyb-verde/50 bg-[color-mix(in_srgb,var(--kyb-verde)_10%,var(--kyb-branco))] text-kyb-verde-texto" },
+  atencao: { icon: CircleAlert, label: "Atenção", className: "border-kyb-alerta/40 bg-[color-mix(in_srgb,var(--kyb-alerta)_10%,var(--kyb-branco))] text-kyb-alerta" },
+  divergente: { icon: CircleX, label: "Divergente", className: "border-kyb-erro/40 bg-[color-mix(in_srgb,var(--kyb-erro)_10%,var(--kyb-branco))] text-kyb-erro" },
   aguardando: { icon: Clock, label: "Aguardando", className: "border-kyb-linha bg-kyb-branco text-kyb-mudo" },
 };
 

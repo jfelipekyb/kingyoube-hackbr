@@ -26,7 +26,7 @@ describe("seed idempotente", () => {
   it("guarda centavos como bigint e não cria solicitações, propostas nem rodadas", async () => {
     const [c2] = await db.select().from(s.invoices).where(eq(s.invoices.cbsCents, 43650n));
     expect(c2.cbsCents).toBe(43650n);
-    for (const table of [s.rfbRequests, s.radProposals, s.outboundEmails, s.agentRuns, s.agentEvents]) {
+    for (const table of [s.rfbRequests, s.radProposals, s.outboundMessages, s.agentRuns, s.agentEvents]) {
       const [row] = await db.select({ n: count() }).from(table);
       expect(Number(row.n)).toBe(0);
     }

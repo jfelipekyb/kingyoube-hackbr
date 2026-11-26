@@ -31,6 +31,32 @@ describe("supplierLight — cada linha da tabela 1 de docs/11", () => {
   });
 });
 
+describe("sem dado da Receita: aguardando, nunca verde", () => {
+  it("fornecedor sem compra com dado e venda sem débito ficam aguardando", () => {
+    expect(supplierLight({ radAgreement: "aceita", purchases: [] }).light).toBe("aguardando");
+    expect(customerLight({ receipt: "recebido", saldoDevedorCents: null })).toBe("aguardando");
+    expect(countByLight([{ light: "aguardando" }, { light: "verde" }])).toEqual({ vermelho: 0, amarelo: 0, verde: 1, aguardando: 1 });
+  });
+
+  it("seed sem sincronização: Forno Forte não é verde e nada entra na contagem por cor", async () => {
+    const { db, close } = await createTestDb();
+    try {
+      const DEMO_TODAY = "2026-11-20";
+      await seedDemo(db, { demoToday: DEMO_TODAY });
+      const data = buildDemoData(DEMO_TODAY);
+      const padaria = data.companies.find((c) => c.slug === "padaria-boa-massa")!;
+      const forno = data.counterparties.find((c) => c.slug === FORNO_FORTE_SLUG)!;
+      const suppliers = await supplierLights(db, padaria.id);
+      expect(suppliers.find((r) => r.counterpartyId === forno.id)?.light).toBe("aguardando");
+      expect(countByLight(suppliers)).toEqual({ vermelho: 0, amarelo: 0, verde: 0, aguardando: suppliers.length });
+      const customers = await customerLights(db, padaria.id);
+      expect(countByLight(customers)).toEqual({ vermelho: 0, amarelo: 0, verde: 0, aguardando: customers.length });
+    } finally {
+      await close();
+    }
+  }, 120_000);
+});
+
 describe("customerLight — cada linha da tabela 2 de docs/11", () => {
   it("verde: cliente pagou, ou CBS extinta/sem saldo devedor", () => {
     expect(customerLight({ receipt: "recebido", saldoDevedorCents: 0n })).toBe("verde");
@@ -76,13 +102,16 @@ describe("semáforos sobre o seed (docs/11)", () => {
     expect(rows.find((r) => r.counterpartyId === cp(MOINHO_SLUG).id)).toMatchObject({ light: "amarelo", radAgreement: "sem_resposta" });
     const c5 = data.invoices.find((i) => i.scenario === "C5")!;
     expect(rows.find((r) => r.cnpj === c5.counterpartyCnpj)).toMatchObject({ light: "verde", regularizedByRad: true });
-    expect(rows.filter((r) => r.light === "verde")).toHaveLength(rows.length - 2);
+    expect(rows.filter((r) => r.light === "verde")).toHaveLength(rows.length - 2 - countByLight(rows).aguardando);
   });
 
   it("Padaria: V6 vermelha, V2 amarela, demais vendas verdes", async () => {
     const rows = await customerLights(db, padaria.id);
     const key = (s: string) => data.invoices.find((i) => i.scenario === s)!.accessKey;
-    expect(countByLight(rows)).toEqual({ vermelho: 1, amarelo: 1, verde: rows.length - 2 });
+    const counts = countByLight(rows);
+    expect(counts).toMatchObject({ vermelho: 1, amarelo: 1 });
+    expect(counts.verde).toBe(rows.length - 2 - counts.aguardando);
+    expect(rows.filter((r) => r.light === "aguardando").every((r) => r.saldoDevedorCents === null)).toBe(true);
     expect(rows.find((r) => r.accessKey === key("V6"))).toMatchObject({ light: "vermelho", receipt: "vencido" });
     expect(rows.find((r) => r.accessKey === key("V2"))).toMatchObject({ light: "amarelo", receipt: "a_receber" });
   });

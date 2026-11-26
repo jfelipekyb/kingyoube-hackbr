@@ -29,6 +29,13 @@
       "when": 1795709482035,
       "tag": "0003_semaforos",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795710795187,
+      "tag": "0004_s4_rad_mensageiro",
+      "breakpoints": true
     }
   ]
 }

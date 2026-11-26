@@ -9,6 +9,7 @@ import { buildDemoData } from "@/seed/demo-data";
 import { seedDemo } from "@/seed/seed";
 import { createTestDb } from "@/test/db";
 import { reconcile, reconcilePortfolio, type ConciliacaoDeps } from "./index";
+import { itemDetail } from "./queries";
 
 let db: Db;
 let close: () => Promise<void>;
@@ -95,6 +96,14 @@ describe("Conciliador sobre o seed (docs/06, tabela Por status)", () => {
     ]);
   });
 
+  it("detalhe da compra C1 mostra o CBS apropriado e o utilizado (R$ 150,00)", async () => {
+    const [item] = await db.select({ id: s.reconciliationItems.id }).from(s.reconciliationItems).where(eq(s.reconciliationItems.accessKey, keyOf("C1")));
+    const detail = await itemDetail(db, item.id);
+    const fields = new Map((detail?.receita ?? []).flatMap((r) => r.fields));
+    expect(fields.get("Apropriado")).toBe(15000n);
+    expect(fields.get("Utilizado")).toBe(15000n);
+  });
+
   it("recalcular não duplica itens nem muda números", async () => {
     const before = await db.select().from(s.reconciliationItems);
     await reconcilePortfolio(deps);
@@ -138,10 +147,19 @@ describe("Analista: a LLM nunca muda número", () => {
 
   it("reescrita com os mesmos números vale; com número trocado, fica o original", async () => {
     const original = templateExplanation(facts);
-    const good = await explain(facts, async () => "No período 10/2026, a Receita apurou R$ 132,00 e a nota R$ 120,00: R$ 12,00 a mais na Receita.");
+    const good = await explain(facts, async () => "A nota traz R$ 120,00 de CBS, mas a Receita apurou R$ 132,00 na mesma chave em 10/2026: R$ 12,00 a mais na Receita. Revise a classificação dos itens.");
     expect(good).toMatchObject({ rewritten: true, original });
     const bad = await explain(facts, async () => "A Receita apurou R$ 133,00, a nota R$ 120,00, diferença de R$ 13,00 em 10/2026.");
     expect(bad).toEqual({ explanation: original, original, rewritten: false });
-    expect(sameNumbers("R$ 1,00 e 2", "2 e R$ 1,00")).toBe(true);
+    expect(sameNumbers("R$ 1,00 e 2", "R$ 1,00 e 2")).toBe(true);
+  });
+
+  it("reescrita que troca a ordem dos valores ou o sinal fica com o original", async () => {
+    const original = templateExplanation(facts);
+    const swapped = await explain(facts, async () => "A nota informa CBS de R$ 132,00. A Receita apurou R$ 120,00 para a mesma chave no período 10/2026. Diferença de R$ 12,00 a maior na Receita.");
+    expect(swapped).toEqual({ explanation: original, original, rewritten: false });
+    expect(sameNumbers("R$ 1,00 e 2", "2 e R$ 1,00")).toBe(false);
+    expect(sameNumbers("Diferença de -R$ 12,00", "Diferença de R$ 12,00")).toBe(false);
+    expect(sameNumbers("Diferença de -R$ 12,00", "Diferença de R$ -12,00")).toBe(true);
   });
 });
