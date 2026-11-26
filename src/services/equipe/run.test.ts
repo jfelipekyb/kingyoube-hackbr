@@ -7,6 +7,7 @@ import type { Scraper } from "@/services/vigia/scrape";
 import { seedDemo } from "@/seed/seed";
 import { createTestDb } from "@/test/db";
 import { ROUND_AGENTS, RunError, runAgentStep, startRun, type RunDeps } from "./run";
+import { pendingDecisions } from "./snapshot";
 
 const env = { RECEITA_MODE: "SIMULADO", DEMO_TODAY: "2026-11-20" };
 const page = (v: string) => `# Página\n\n## 2. Histórico de versão\n\n| Data | Versão | Descrição |\n|---|---|---|\n| 01/10/2026 | ${v} | ajuste |\n\n## 3. Regras`;
@@ -122,6 +123,7 @@ describe("Rodada da equipe (docs/09)", () => {
     expect(r.run.status).toBe("concluida");
     expect(await countOf(s.radProposals)).toBe(before);
     expect(r.run.counts).toMatchObject({ preparar_rad: 0 });
+    expect((await pendingDecisions(db)).filter((d) => d.kind === "rad")).toHaveLength(1);
   });
 
   it("site do fornecedor ilegível (APP_URL público sem Firecrawl) não para a rodada", async () => {

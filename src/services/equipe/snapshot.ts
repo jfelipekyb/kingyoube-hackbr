@@ -1,6 +1,6 @@
 // Visão da rodada para a Sala da Equipe e para GET /api/equipe/run/[runId]. Sem bigint: valores já formatados.
 import { eq } from "drizzle-orm";
-import { companies, reconciliationItems, type RunStepState } from "@/db/schema";
+import { companies, radProposals, reconciliationItems, type RunStepState } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { formatBRL } from "@/lib/money";
 import { radCandidates } from "@/services/carteira/metrics";
@@ -20,7 +20,9 @@ const shortName = (name: string) => name.replace(/\s*\(FICTÍCI[AO]\)$/, "");
 export async function pendingDecisions(db: Db): Promise<Decision[]> {
   const names = new Map((await db.select({ id: companies.id, name: companies.name }).from(companies)).map((c) => [c.id, shortName(c.name)]));
   const out: Decision[] = [];
-  for (const c of (await radCandidates(db)).filter((x) => !x.hasDecision)) {
+  // Compra com RAD recusada já teve a decisão do contador: a Tesouraria não refaz e a Sala não pede de novo.
+  const refused = new Set((await db.select({ invoiceId: radProposals.invoiceId }).from(radProposals).where(eq(radProposals.state, "recusada"))).map((p) => p.invoiceId));
+  for (const c of (await radCandidates(db)).filter((x) => !x.hasDecision && !refused.has(x.invoiceId))) {
     out.push({ kind: "rad", title: `Guia de recolhimento (RAD) — ${names.get(c.companyId) ?? "cliente"}`, detail: `Crédito travado de ${formatBRL(c.lockedCents)}. Só sai com a sua aprovação.`, href: `/rad?cliente=${c.companyId}` });
   }
   const items = await db
