@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 
 const shortName = (n: string | null | undefined) => (n ?? "—").replace(/\s*\(FICTÍCIA\)$/, "");
 const shortKey = (k: string) => `…${k.slice(-8)}`;
-const OPEN = ["rascunho", "aguardando_aprovacao", "aprovada", "darf_gerado", "pago_confirmado", "erro_receita"];
+const OPEN = ["rascunho", "aguardando_aprovacao", "aprovada", "darf_gerado", "erro_receita"];
 
 export default async function RadPage({ searchParams }: { searchParams: Promise<{ cliente?: string }> }) {
   const sp = await searchParams;
