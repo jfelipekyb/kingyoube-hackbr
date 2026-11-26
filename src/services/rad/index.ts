@@ -33,6 +33,7 @@ export class RadError extends Error {
 }
 
 const TESOURARIA = "agente:tesouraria";
+const REMAINDER_JUSTIFICATION = "Já houve RAD pago desta nota; esta proposta cobre o saldo de crédito ainda travado.";
 const DEFAULT_JUSTIFICATION = "Fornecedor não recolheu a CBS da nota; o RAD libera o crédito travado do cliente.";
 
 async function humanUser(db: Db, actor: string) {
@@ -108,8 +109,10 @@ export async function prepareProposal(db: Db, input: { companyId: string; invoic
       companyId: input.companyId,
       invoiceId: input.invoiceId,
       accessKey: candidate.accessKey,
-      option: "PAGAMENTO_TOTAL",
-      justification: DEFAULT_JUSTIFICATION,
+      // Já houve RAD parcial pago: a nova proposta cobre só o saldo ainda travado.
+      ...(candidate.confirmedRadCents > 0n
+        ? { option: "PAGAMENTO_PARCIAL" as const, partialCents: candidate.lockedCents, justification: REMAINDER_JUSTIFICATION }
+        : { option: "PAGAMENTO_TOTAL" as const, justification: DEFAULT_JUSTIFICATION }),
       preparedBy: TESOURARIA,
     })
     .onConflictDoNothing({ target: [radProposals.companyId, radProposals.invoiceId], where: sql`${radProposals.state} in (${sql.raw(OPEN_STATES.map((st) => `'${st}'`).join(", "))})` })

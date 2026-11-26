@@ -3,15 +3,17 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import * as s from "@/db/schema";
 import type { Db } from "@/db/types";
 import type { ReceitaAdapter } from "@/services/receita";
+import { radCandidates } from "@/services/carteira/metrics";
 import { ANALISTA, CONTADOR, invoiceOf, padaria, syncedDb } from "@/test/rad-fixture";
 import { approveProposal, generateDarf, prepareProposal, RadError, submitProposal } from "./index";
 
 let db: Db;
 let close: () => Promise<void>;
 let adapter: ReceitaAdapter;
+let sync: () => Promise<void>;
 beforeAll(async () => {
   const f = await syncedDb();
-  ({ db, close } = f);
+  ({ db, close, sync } = f);
   adapter = f.deps.adapter;
 }, 120_000);
 afterAll(() => close());
@@ -53,5 +55,20 @@ describe("RAD sob concorrência (achados do PR #6)", () => {
     expect((refused[0].reason as RadError).status).toBe(409);
     const [row] = await db.select().from(s.radProposals).where(eq(s.radProposals.id, p.id));
     expect(row.state).toBe("darf_gerado");
+  });
+
+  it("0d: RAD parcial pago não bloqueia: o saldo ainda travado da mesma nota vira nova proposta", async () => {
+    const c2 = invoiceOf("C2");
+    await sync();
+    const [paid] = await db.select().from(s.radProposals).where(and(eq(s.radProposals.invoiceId, c2.id), eq(s.radProposals.state, "pago_confirmado")));
+    expect(paid).toBeDefined();
+    // A Receita confirmou só parte do crédito: R$ 200,00 dos R$ 436,50.
+    await db.update(s.rfbPayments).set({ principalCents: 20000n }).where(and(eq(s.rfbPayments.accessKey, c2.accessKey), eq(s.rfbPayments.type, 1)));
+    const cand = (await radCandidates(db, padaria.id)).find((c) => c.invoiceId === c2.id);
+    expect(cand).toMatchObject({ lockedCents: 23650n, confirmedRadCents: 20000n, hasDecision: false });
+    const next = await prep("C2");
+    expect(next.id).not.toBe(paid.id);
+    expect(next).toMatchObject({ state: "rascunho", option: "PAGAMENTO_PARCIAL", partialCents: 23650n });
+    expect((await prep("C2")).id).toBe(next.id);
   });
 });
