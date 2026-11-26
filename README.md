@@ -44,4 +44,30 @@ Next.js, TypeScript, Postgres, APIs da apuração da CBS da Receita Federal, Fir
 
 ## Status
 
-Em construção durante o Hack Brasil 2026. A especificação está em [`docs/`](docs/). Os comandos para rodar a demonstração entram aqui assim que o código estiver no repositório.
+Demonstração no ar: **https://hackbrasil.kingyoube.com**
+
+> Dados simulados — não é consulta real à Receita. A base é fictícia (12 clientes, notas e empresas inventadas) e a API da Receita roda no modo `SIMULADO`, com respostas tiradas do contrato oficial. Toda tela mostra esse aviso.
+
+O que já funciona:
+
+- **Fundação (S1):** base de demonstração com 12 clientes e 412 notas, carteira, trilha de auditoria append-only e botão para reiniciar a demonstração.
+- **Apuração (S2):** consulta assíncrona de débitos, créditos, pagamentos e recolhimentos da CBS (solicitar, acompanhar, baixar, normalizar), com webhook e cron protegidos.
+- **Conciliação, Analista e Carteira (S3):** nota contra Receita pelas regras determinísticas de `docs/04`, explicação de cada diferença em português e semáforos de clientes e fornecedores.
+- **Tesouraria e Mensageiro (S4):** proposta de RAD preparada pelo agente, enviada pelo Analista e decidida pelo contador (trava no servidor), DARF gerado, e-mail ao financeiro (Resend ou simulado) e WhatsApp simulado, e confirmação do pagamento pelos recolhimentos.
+
+O que vem a seguir está em [`docs/08-BACKLOG.md`](docs/08-BACKLOG.md); o que ainda depende de decisão está em [`docs/PENDENCIAS.md`](docs/PENDENCIAS.md).
+
+## Como rodar
+
+Precisa de Node.js 22 e Docker.
+
+```bash
+cp .env.example .env.local   # preencha DATABASE_URL; RECEITA_MODE=SIMULADO é o padrão
+docker compose up -d         # Postgres local
+npm i
+npm run db:migrate
+npm run db:seed              # recria a base de demonstração
+npm run dev                  # http://localhost:3000
+```
+
+Antes de abrir um PR, `npm run verify` (lint, typecheck e testes) tem que passar.
