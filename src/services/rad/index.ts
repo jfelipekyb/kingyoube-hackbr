@@ -1,6 +1,6 @@
 // Propostas de RAD (docs/02, docs/04, docs/11): a Tesouraria prepara, uma pessoa envia, o contador decide.
 // As travas ficam aqui, no servidor; a tela só reflete o que o serviço permite.
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { counterparties, invoices, radProposals, users } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { radCandidates } from "@/services/carteira/metrics";
@@ -16,6 +16,8 @@ export type RadProposal = typeof radProposals.$inferSelect;
 export type RadOption = RadProposal["option"];
 
 /** Estados que ainda ocupam a compra: não se prepara outra proposta para ela. */
+// Depois disso uma reserva "gerando" esquecida (processo caiu) pode ser retomada.
+const DARF_CLAIM_TTL_MS = 2 * 60_000;
 // Estados que ocupam a compra (índice único parcial rad_proposals_open_invoice_uq, migration 0005).
 const OPEN_STATES: RadState[] = ["rascunho", "aguardando_aprovacao", "aprovada", "darf_gerado", "erro_receita"];
 
@@ -241,12 +243,34 @@ export async function generateDarf(
     }
     throw e;
   }
-  const result = await deps.adapter.gerarDarfRad(p.companyId, [
-    { chaveDFE: p.accessKey, opcaoPagamento: p.option, ...(p.option === "PAGAMENTO_PARCIAL" && p.partialCents !== null ? { valorDarfParcialCents: p.partialCents } : {}) },
-  ]);
+  const now = (deps.now ?? (() => new Date()))();
+  const [claimed] = await db
+    .update(radProposals)
+    .set({ darfRequestedAt: now })
+    .where(
+      and(
+        eq(radProposals.id, p.id),
+        eq(radProposals.state, "aprovada"),
+        or(isNull(radProposals.darfRequestedAt), lt(radProposals.darfRequestedAt, new Date(now.getTime() - DARF_CLAIM_TTL_MS))),
+      ),
+    )
+    .returning({ id: radProposals.id });
+  if (!claimed) {
+    await recordAudit(db, { actor: input.actor, action: "rad.gerar_darf", entity: "rad_proposal", entityId: p.id, result: "negado", details: { codigo: "DARF_EM_GERACAO" } });
+    throw new RadError(409, "DARF_EM_GERACAO", "O DARF desta proposta já está sendo gerado; aguarde e recarregue a tela.");
+  }
+  let result: Awaited<ReturnType<ReceitaAdapter["gerarDarfRad"]>>;
+  try {
+    result = await deps.adapter.gerarDarfRad(p.companyId, [
+      { chaveDFE: p.accessKey, opcaoPagamento: p.option, ...(p.option === "PAGAMENTO_PARCIAL" && p.partialCents !== null ? { valorDarfParcialCents: p.partialCents } : {}) },
+    ]);
+  } catch (e) {
+    await db.update(radProposals).set({ darfRequestedAt: null }).where(eq(radProposals.id, p.id));
+    throw e;
+  }
   if (result.cdRetorno !== "DARF_GERADO") {
     const fields = "dadosInvalidos" in result && result.dadosInvalidos?.length ? ` Campos: ${result.dadosInvalidos.join(", ")}.` : "";
-    const row = await transition(db, p.id, ["aprovada"], { state: "erro_receita", rfbReturnCode: result.cdRetorno, rfbMessage: RAD_ERROR_MESSAGE[result.cdRetorno] + fields });
+    const row = await transition(db, p.id, ["aprovada"], { state: "erro_receita", darfRequestedAt: null, rfbReturnCode: result.cdRetorno, rfbMessage: RAD_ERROR_MESSAGE[result.cdRetorno] + fields });
     await recordAgentEvent(db, { agent: "tesouraria", action: "darf_erro", entity: "rad_proposal", entityId: p.id, status: "erro", summary: `A Receita recusou o DARF: ${result.cdRetorno}` });
     await recordAudit(db, { actor: input.actor, action: "rad.gerar_darf", entity: "rad_proposal", entityId: p.id, result: "erro", details: { cdRetorno: result.cdRetorno } });
     return row;
@@ -261,7 +285,7 @@ export async function generateDarf(
     totalCents: result.informacoesPagamento.valorDarfTotalCents,
     rfbReturnCode: result.cdRetorno,
     rfbMessage: null,
-    darfGeneratedAt: (deps.now ?? (() => new Date()))(),
+    darfGeneratedAt: now,
   });
   await recordAgentEvent(db, {
     agent: "tesouraria",

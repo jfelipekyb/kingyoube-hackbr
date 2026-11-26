@@ -43,6 +43,13 @@
       "when": 1795718140380,
       "tag": "0005_s5_rad_open_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795718200969,
+      "tag": "0006_s5_rad_darf_gerando",
+      "breakpoints": true
     }
   ]
 }

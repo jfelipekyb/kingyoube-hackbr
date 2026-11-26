@@ -299,6 +299,8 @@ export const radProposals = pgTable(
     rejectionReason: text("rejection_reason"),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     darfGeneratedAt: timestamp("darf_generated_at", { withTimezone: true }),
+    // Marca "gerando": reservada antes de chamar a Receita, para dois cliques não gerarem dois DARFs.
+    darfRequestedAt: timestamp("darf_requested_at", { withTimezone: true }),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
     paidPrincipalCents: cents("paid_principal_cents"),
     divergenceRule: varchar("divergence_rule", { length: 3 }),
