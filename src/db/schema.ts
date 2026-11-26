@@ -23,6 +23,10 @@ const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull(
 
 export const userRole = pgEnum("user_role", ["analista", "contador"]);
 export const contactSource = pgEnum("contact_source", ["cadastro", "firecrawl", "simulado"]);
+// Semáforos (docs/11): acordo do fornecedor sobre o RAD e recebimento das vendas.
+export const radAgreement = pgEnum("rad_acordo", ["aceita", "recusa", "sem_resposta"]);
+export const radAgreementSource = pgEnum("rad_acordo_fonte", ["cadastro", "resposta_cobranca", "simulado"]);
+export const receiptStatus = pgEnum("recebimento", ["recebido", "a_receber", "vencido"]);
 export const invoiceDirection = pgEnum("invoice_direction", ["venda", "compra"]);
 export const invoiceSource = pgEnum("invoice_source", ["seed", "upload"]);
 export const rfbService = pgEnum("rfb_service", ["debitos", "creditos", "pagamentos", "recolhimentos"]);
@@ -105,6 +109,9 @@ export const counterparties = pgTable("counterparties", {
   financeEmail: text("finance_email"),
   contactSource: contactSource("contact_source").notNull().default("cadastro"),
   contactFoundAt: timestamp("contact_found_at", { withTimezone: true }),
+  radAgreement: radAgreement("rad_acordo").notNull().default("sem_resposta"),
+  radAgreementAt: timestamp("rad_acordo_em", { withTimezone: true }),
+  radAgreementSource: radAgreementSource("rad_acordo_fonte"),
   isDemo: boolean("is_demo").notNull().default(false),
 });
 
@@ -124,6 +131,9 @@ export const invoices = pgTable(
     totalCents: cents("total_cents").notNull(),
     cbsCents: cents("cbs_cents").notNull(),
     source: invoiceSource("source").notNull(),
+    // Só vendas (docs/11): situação do recebimento e vencimento do título.
+    receipt: receiptStatus("recebimento"),
+    titleDueDate: date("vencimento_titulo"),
   },
   (t) => [uniqueIndex("invoices_company_key_uq").on(t.companyId, t.accessKey)],
 );

@@ -2,6 +2,7 @@
 import { count } from "drizzle-orm";
 import * as s from "@/db/schema";
 import type { Db } from "@/db/types";
+import { addDays, brasiliaDateTime } from "@/lib/dates";
 import { recordAudit } from "@/services/auditoria";
 import { RECEITA_DOCS_BASE, WATCHED_PAGES } from "@/services/receita/contract";
 import { buildDemoData, DEMO_USERS } from "./demo-data";
@@ -65,6 +66,9 @@ export async function seedDemo(db: Db, options: SeedOptions): Promise<SeedCounts
         siteUrl: c.siteUrlPath ? `${appUrl}${c.siteUrlPath}` : null,
         financeEmail: c.financeEmail,
         contactSource: "cadastro" as const,
+        radAgreement: c.radAgreement,
+        radAgreementAt: c.radAgreement === "sem_resposta" ? null : new Date(brasiliaDateTime(addDays(options.demoToday, -3))),
+        radAgreementSource: c.radAgreement === "sem_resposta" ? null : ("simulado" as const),
         isDemo: true,
       })),
     );
@@ -80,6 +84,8 @@ export async function seedDemo(db: Db, options: SeedOptions): Promise<SeedCounts
       totalCents: inv.totalCents,
       cbsCents: inv.cbsCents,
       source: "seed" as const,
+      receipt: inv.receipt,
+      titleDueDate: inv.titleDueDate,
     }));
     for (let i = 0; i < rows.length; i += 200) await tx.insert(s.invoices).values(rows.slice(i, i + 200));
     await tx.insert(s.effortStandards).values(EFFORT_STANDARDS.map((e) => ({ ...e, source: "premissa", updatedBy: "seed" })));
