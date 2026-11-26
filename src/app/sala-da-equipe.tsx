@@ -2,7 +2,8 @@
 
 import { CircleAlert, CloudDownload, FileSearch, Inbox, Mail, MessageCircle, Radar, Receipt, Scale, ShieldCheck, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AgentStatus, type AgentState } from "@/components/ui/agent-status";
 import { Button } from "@/components/ui/button";
 import { CountUp } from "@/components/ui/count-up";
@@ -51,6 +52,14 @@ export function SalaDaEquipe({ agents, initial }: { agents: AgentCard[]; initial
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [current, setCurrent] = useState<string | null>(null);
+  const router = useRouter();
+  // Voltar pelo navegador reaproveita a página do cache do roteador (talvez de antes da rodada): busca a versão atual.
+  useEffect(() => router.refresh(), [router]);
+  const [seen, setSeen] = useState(initial);
+  if (initial !== seen) {
+    setSeen(initial);
+    if (initial && !running) setSnap(initial);
+  }
 
   const seq = useRef({ sent: 0, applied: 0 });
   // Polling e chamadas se cruzam: só vale a resposta mais nova.
