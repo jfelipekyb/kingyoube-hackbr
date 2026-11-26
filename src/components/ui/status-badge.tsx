@@ -7,7 +7,7 @@ const TONES: Record<StatusTone, { icon: LucideIcon; label: string; className: st
   conciliado: { icon: CircleCheck, label: "Conciliado", className: "border-kyb-verde/50 bg-kyb-verde/10 text-kyb-verde-texto" },
   atencao: { icon: CircleAlert, label: "Atenção", className: "border-kyb-alerta/40 bg-kyb-alerta/10 text-kyb-alerta" },
   divergente: { icon: CircleX, label: "Divergente", className: "border-kyb-erro/40 bg-kyb-erro/10 text-kyb-erro" },
-  aguardando: { icon: Clock, label: "Aguardando", className: "border-kyb-linha bg-kyb-canvas-2 text-kyb-mudo" },
+  aguardando: { icon: Clock, label: "Aguardando", className: "border-kyb-linha bg-kyb-branco text-kyb-mudo" },
 };
 
 /** Selo de status: sempre ícone + texto, nunca só cor. */
