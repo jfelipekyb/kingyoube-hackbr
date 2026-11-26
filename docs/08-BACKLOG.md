@@ -1,18 +1,19 @@
 # 08 — Backlog (sessões do Devin)
 
-Uma sessão = um PR. Ordem obrigatória S1 → S8 (cada uma depende da anterior mergeada). S9 é opcional. Submissão até 30/11/2026 às 23h59; depois disso, nenhum commit.
+Uma sessão = um PR. Ordem obrigatória S1 → S2 → S-Design → S3 → S4 → S5 → S6 → S7 → S8 (cada uma depende da anterior mergeada). S9 é opcional. Submissão até 30/11/2026 às 23h59; depois disso, nenhum commit.
 
 | Sessão | Entrega |
 |---|---|
 | S1 | Fundação: app, banco, carteira de 12 clientes, seed, auditoria, CI, licença |
 | S2 | Agente Apuração: conector da Receita (SIMULADO + REAL atrás de flag) |
+| S-Design | Identidade da marca, movimentos sutis e base do tour guiado (`docs/10`) |
 | S3 | Agentes Conciliador e Analista + Carteira e telas de conciliação |
 | S4 | Agentes Tesouraria e Mensageiro: RAD com aprovação, DARF e e-mail |
 | S5 | Agente Vigia: radar da documentação + contato e cobrança do fornecedor |
 | S6 | Sala da Equipe, Conferente, horas devolvidas e organograma |
 | S7 | Kim por voz |
 | S8 | Acabamento, README de vitrine, smoke test |
-| S9 | Opcional: ligação da Kim (Nvoip) |
+| S9 | Opcional: WhatsApp real e ligação da Kim (Nvoip), desligados na demo |
 
 ---
 
@@ -58,6 +59,25 @@ Uma sessão = um PR. Ordem obrigatória S1 → S8 (cada uma depende da anterior 
 - [ ] Parser aceita campos ausentes como 0 e datas com `Z` e `-03:00` (teste com os exemplos oficiais de `docs/03`).
 - [ ] `RealAdapter` compila e tem testes com `fetch` simulado; não é chamado em CI.
 
+## S-Design — Identidade, movimento e base do tour
+
+Fonte única: `docs/10-DESIGN-E-MOVIMENTO.md`. Vem antes da S3 para que as telas novas já nasçam no padrão.
+
+**Tasks**
+1. `src/styles/tokens.css` com os tokens da seção 1 de `docs/10`; Tailwind lendo as variáveis; Georama via `next/font/google`; `tabular-nums` nos números.
+2. Logo oficial em `public/marca/kingyoube.svg` (o arquivo será enviado na sessão; nunca redesenhar com texto). Menu lateral em Azul Comando com o logo; selo "Dados simulados" fixo no topo.
+3. Componentes base: botão (principal verde, secundário contorno azul), cartão, selo de status com ícone + texto, esqueleto de carregamento, estado vazio com próxima ação.
+4. Biblioteca de movimento (`motion` ou CSS) com os movimentos da tabela da seção 4 de `docs/10`, curva padrão e `prefers-reduced-motion`.
+5. Aplicar nas telas que já existem (Carteira inicial, Sincronização, Auditoria).
+6. Base do tour (componente ou `driver.js`, licença MIT): abre na primeira visita, "Fazer o tour" no topo, pular com Esc, foco preso, `localStorage` com try/catch. Nesta sessão, só os passos de elementos que já existem; os 8 passos completos entram na S8.
+7. Teste que procura cor hexadecimal fora de `tokens.css`; `axe` nas telas existentes.
+
+**Critérios de aceite**
+- [ ] Nenhuma cor fora de `tokens.css` (teste).
+- [ ] `axe` sem violação "serious" ou "critical" nas telas existentes.
+- [ ] Com `prefers-reduced-motion`, nenhuma animação não essencial.
+- [ ] Gravação curta: entrada dos cartões, anel "trabalhando", check, tremida do botão bloqueado, tour abrindo e sendo pulado.
+
 ## S3 — Agentes Conciliador e Analista + Carteira
 
 **Tasks**
@@ -66,6 +86,8 @@ Uma sessão = um PR. Ordem obrigatória S1 → S8 (cada uma depende da anterior 
 3. Explicações por modelo de texto por regra; LLM opcional (só se `ANTHROPIC_API_KEY` existir; guarda o texto original).
 4. Telas: Carteira (ordenada por dinheiro em risco), Painel do cliente, Conciliação (filtros) e Detalhe (lado a lado, regra, evidência, explicação).
 5. `agent_events` dos agentes `conciliador` e `analista`.
+
+**Também (docs/11):** campos `rad_acordo` e `recebimento`, funções `supplierLight` e `customerLight`, seed dos semáforos sem mudar contagens, telas de semáforo de fornecedores e de clientes, bolinhas na Carteira.
 
 **Critérios de aceite**
 - [ ] Teste de ponta a ponta sobre o seed confere exatamente as tabelas "Por status" e "Carteira" de `docs/06`.
@@ -82,6 +104,8 @@ Uma sessão = um PR. Ordem obrigatória S1 → S8 (cada uma depende da anterior 
 4. Confirmação: após sincronizar recolhimentos, proposta com chave encontrada → `pago_confirmado` (e divergência R07 se valor diferente); vencida sem confirmação → `vencida`.
 5. Telas: candidatas, proposta (total/parcial + justificativa), fila do Contador, detalhe do DARF.
 6. `agent_events` de `tesouraria` e `mensageiro`.
+
+**Também (docs/11):** trava "ciente da recusa" ao aprovar RAD de fornecedor vermelho (409 sem ela); canal WhatsApp simulado no Mensageiro (`outbound_messages` com `channel`).
 
 **Critérios de aceite**
 - [ ] Teste: Analista tenta gerar DARF → 403 e auditoria; mesmo usuário envia e aprova → recusado; proposta de outra empresa → recusado; chamada em nome de agente para aprovar → recusado.
@@ -100,6 +124,8 @@ Uma sessão = um PR. Ordem obrigatória S1 → S8 (cada uma depende da anterior 
 5. Serviço `notifySupplier(invoiceId)`: e-mail de cobrança pela Resend para `FORNECEDOR_EMAIL`, `Idempotency-Key = cobranca-<invoiceId>`, registrado em `outbound_emails`; estados de `docs/02`.
 6. Tela Fornecedores: contato encontrado (com a fonte), candidatas daquele fornecedor, e-mail com status de entrega.
 7. `agent_events` de `vigia` e `mensageiro`.
+
+**Também (docs/11):** respostas simuladas do fornecedor à cobrança ("vou recolher" / "não aceito o RAD") atualizando `rad_acordo`.
 
 **Critérios de aceite**
 - [ ] Teste com resposta do Firecrawl simulada para `new`, `same` e `changed`.
@@ -133,6 +159,8 @@ Uma sessão = um PR. Ordem obrigatória S1 → S8 (cada uma depende da anterior 
 4. Tela Kim (`docs/09`) + chamada "Perguntar à Kim" na Sala da Equipe.
 5. `kim_queries` e auditoria, sem áudio.
 
+**Também (docs/11):** avatar 2D da Kim com boca sincronizada (ElevenLabs `with-timestamps`, fallback por volume), legenda palavra a palavra, intenções `semaforo_fornecedores` e `semaforo_clientes`, resumo do dia por WhatsApp simulado.
+
 **Critérios de aceite**
 - [ ] Todos os casos da tabela de extenso passam.
 - [ ] Teste: `decisoes_hoje` em "seed + rodada completa" devolve exatamente a frase de `docs/09`; antes da rodada, a frase de "ainda não rodou"; depois de aprovar e confirmar o C2, a frase muda.
@@ -144,13 +172,14 @@ Uma sessão = um PR. Ordem obrigatória S1 → S8 (cada uma depende da anterior 
 
 **Tasks**
 1. README de vitrine: problema, demo (link e GIF), a equipe digital (o que é IA e o que é regra), arquitetura (diagrama), fluxo, regras inegociáveis, "Como usamos cada parceiro" (com links para o código), "Construído com Devin" (números do `DEVIN-LOG`), como rodar, limitações e pendências honestas, time.
-2. Roteiro de demo dentro do app (`/demo`): botão "Reiniciar demonstração" (protegido) e passos guiados.
+2. Roteiro de demo dentro do app (`/demo`): botão "Reiniciar demonstração" (protegido) e passos guiados. **Tour guiado completo com os 8 passos de `docs/10`** (narração da Kim opcional, som desligado por padrão).
 3. Revisão de textos (português correto), estados vazios e de erro, responsivo.
 4. Smoke test pós-deploy (`npm run smoke -- $APP_URL`): painel abre, rodada da equipe conclui, Kim responde em texto, fluxo C2 completo.
 5. Revisão de segurança de `docs/07` (gitleaks, grep de termos proibidos).
 
 **Critérios de aceite**
 - [ ] Smoke na URL pública passa.
+- [ ] Tour com os 8 passos, pulável, lembrado na segunda visita (gravação).
 - [ ] README revisado; nenhum termo proibido; gitleaks limpo.
 - [ ] Resumo de até 500 caracteres para o formulário de submissão.
 
