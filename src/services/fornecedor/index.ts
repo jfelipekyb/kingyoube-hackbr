@@ -1,8 +1,8 @@
 // Contato do fornecedor (Vigia, Firecrawl) e cobrança (Mensageiro, Resend + WhatsApp simulado). docs/05, docs/02, docs/11.
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { and, desc, eq, inArray } from "drizzle-orm";
-import { counterparties, invoices, outboundMessages } from "@/db/schema";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { counterparties, invoices, outboundMessages, radProposals } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { maskAccessKey } from "@/lib/access-key";
 import type { Env } from "@/lib/config";
@@ -157,7 +157,14 @@ export async function notifySupplier(deps: SupplierDeps, invoiceId: string, acto
   if (!inv || inv.direction !== "compra") throw new SupplierError(404, "NOTA_NAO_ENCONTRADA", "Compra não encontrada.");
   const [cp] = await db.select().from(counterparties).where(eq(counterparties.cnpj, inv.counterpartyCnpj));
   if (!cp?.financeEmail) throw new SupplierError(409, "SEM_CONTATO", "Ainda sem contato financeiro do fornecedor: busque o contato antes de cobrar.");
-  const text = chargeText({ supplier: cp.name, accessKey: inv.accessKey, cbsCents: inv.cbsCents });
+  // RAD já confirmado pela Receita para esta nota sai da cobrança: só o saldo ainda em aberto.
+  const [{ paid }] = await db
+    .select({ paid: sql<string>`coalesce(sum(${radProposals.paidPrincipalCents}), 0)::text` })
+    .from(radProposals)
+    .where(and(eq(radProposals.invoiceId, invoiceId), eq(radProposals.state, "pago_confirmado")));
+  const openCents = inv.cbsCents - BigInt(paid);
+  if (openCents <= 0n) throw new SupplierError(409, "JA_RECOLHIDO", "A CBS desta nota já foi recolhida via RAD confirmado: nada a cobrar.");
+  const text = chargeText({ supplier: cp.name, accessKey: inv.accessKey, cbsCents: openCents });
   const { row: email, created } = await sendEmailOnce(deps, {
     kind: "cobranca_fornecedor",
     refId: invoiceId,
