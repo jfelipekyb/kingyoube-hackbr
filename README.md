@@ -62,7 +62,7 @@ O que vem a seguir está em [`docs/08-BACKLOG.md`](docs/08-BACKLOG.md); o que ai
 Precisa de Node.js 22 e Docker.
 
 ```bash
-cp .env.example .env.local   # preencha DATABASE_URL; RECEITA_MODE=SIMULADO é o padrão
+cp .env.example .env.local   # DATABASE_URL=postgres://cbs:cbs_local_dev@localhost:5432/cbs e RECEITA_MODE=SIMULADO
 docker compose up -d         # Postgres local
 npm i
 npm run db:migrate

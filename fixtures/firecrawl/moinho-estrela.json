@@ -1,0 +1,8 @@
+{
+  "url": "/demo/fornecedores/moinho-estrela",
+  "json": {
+    "cnpj": "00.452.980/0001-63",
+    "razaoSocial": "Moinho Estrela Farinhas (FICTÍCIA)",
+    "emailFinanceiro": "financeiro@moinhoestrela.exemplo"
+  }
+}
