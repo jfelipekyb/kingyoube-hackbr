@@ -2,6 +2,7 @@
 
 import { animate } from "motion";
 import { useEffect, useRef, useState } from "react";
+import { formatBRL } from "@/lib/money";
 import { interpolateInt, prefersReducedMotion } from "@/components/ui/motion-utils";
 
 /**
@@ -12,13 +13,16 @@ export function CountUp({
   value,
   from,
   duration = 600,
-  format = (v) => v.toLocaleString("pt-BR"),
+  format,
+  currency = false,
   className,
 }: {
   value: bigint | number;
   from?: bigint | number;
   duration?: number;
   format?: (v: bigint) => string;
+  /** Formata como R$ (use em Server Components, que não podem passar `format`). */
+  currency?: boolean;
   className?: string;
 }) {
   const target = BigInt(value);
@@ -43,7 +47,7 @@ export function CountUp({
 
   return (
     <span className={className} style={{ fontVariantNumeric: "tabular-nums" }}>
-      {format(shown)}
+      {(format ?? (currency ? formatBRL : (v: bigint) => v.toLocaleString("pt-BR")))(shown)}
     </span>
   );
 }

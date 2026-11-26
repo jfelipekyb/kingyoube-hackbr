@@ -3,8 +3,8 @@ import { classify, type InvoiceFact, type ReceitaLine } from "./rules";
 
 const KEY = "3".repeat(44);
 const ref = { debito: "2026-11-20", credito: "2026-11-20" };
-const inv = (over: Partial<InvoiceFact> = {}): InvoiceFact => ({ id: "inv-1", accessKey: KEY, period: "2026-11", kind: "debito", issuedOn: "2026-11-01", cbsCents: 12000n, ...over });
-const rfb = (over: Partial<ReceitaLine> = {}): ReceitaLine => ({ accessKey: KEY, period: "2026-11", kind: "debito", origin: 0, apuradoCents: 12000n, blockedCents: 0n, ...over });
+const inv = (over: Partial<InvoiceFact> = {}): InvoiceFact => ({ id: "inv-1", accessKey: KEY, period: "11/2026", kind: "debito", issuedOn: "2026-11-01", cbsCents: 12000n, ...over });
+const rfb = (over: Partial<ReceitaLine> = {}): ReceitaLine => ({ accessKey: KEY, period: "11/2026", kind: "debito", origin: 0, apuradoCents: 12000n, blockedCents: 0n, ...over });
 const one = (invoices: InvoiceFact[], receita: ReceitaLine[], referenceDay: { debito: string | null; credito: string | null } = ref) => {
   const out = classify({ invoices, receita, referenceDay });
   expect(out).toHaveLength(1);
@@ -32,7 +32,7 @@ describe("regras de conciliação (docs/04)", () => {
   it("R05: registro na Receita sem nota → so_na_receita (avaliada primeiro)", () => {
     expect(one([], [rfb({ apuradoCents: 7500n })])).toMatchObject({ ruleId: "R05", status: "so_na_receita", invoiceId: null, rfbCents: 7500n, invoiceCents: null });
     // nota de outro período não casa: a chave + período é o par
-    const out = classify({ invoices: [inv({ period: "2026-10", issuedOn: "2026-10-30" })], receita: [rfb()], referenceDay: ref });
+    const out = classify({ invoices: [inv({ period: "10/2026", issuedOn: "2026-10-30" })], receita: [rfb()], referenceDay: ref });
     expect(out.map((o) => o.ruleId).sort()).toEqual(["R04", "R05"]);
   });
 

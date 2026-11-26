@@ -17,7 +17,6 @@ export const dynamic = "force-dynamic";
 const STATUSES = Object.keys(ITEM_STATUS_LABEL) as ItemStatus[];
 const KIND_LABEL: Record<ItemKind, string> = { debito: "Venda (débito)", credito: "Compra (crédito)" };
 const selectClass = "h-9 rounded-kyb-botao border border-kyb-linha bg-kyb-branco px-3 text-sm";
-const periodBR = (p: string) => `${p.slice(5, 7)}/${p.slice(0, 4)}`;
 const money = (v: bigint | null) => (v === null ? "—" : formatBRL(v));
 
 export default async function ConciliacaoPage({ searchParams }: { searchParams: Promise<{ cliente?: string; status?: string; tipo?: string; todos?: string }> }) {
@@ -101,7 +100,7 @@ export default async function ConciliacaoPage({ searchParams }: { searchParams: 
                     <Link href={`/conciliacao/${r.id}`} className="font-mono text-xs text-kyb-azul underline-offset-4 hover:underline">
                       {maskAccessKey(r.accessKey)}
                     </Link>
-                    <div className="text-xs text-kyb-mudo">período {periodBR(r.period)}</div>
+                    <div className="text-xs text-kyb-mudo">período {r.period}</div>
                   </TableCell>
                   <TableCell className="whitespace-normal">{r.counterpartyName?.replace(/\s*\(FICTÍCIA\)$/, "") ?? "—"}</TableCell>
                   <TableCell className="text-right">{money(r.invoiceCents)}</TableCell>

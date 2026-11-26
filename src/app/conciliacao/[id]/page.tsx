@@ -16,7 +16,6 @@ import { RULES, type RuleId } from "@/services/conciliacao/rules";
 
 export const dynamic = "force-dynamic";
 
-const periodBR = (p: string) => `${p.slice(5, 7)}/${p.slice(0, 4)}`;
 const money = (v: bigint | null) => (v === null ? "—" : formatBRL(v));
 const shortName = (n: string | null | undefined) => (n ?? "—").replace(/\s*\(FICTÍCIA\)$/, "");
 const dateTime = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
@@ -46,7 +45,7 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ id:
         <ArrowLeft aria-hidden className="size-4" /> Voltar para a conciliação
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <PageHeader title={`${isSale ? "Venda" : "Compra"} · período ${periodBR(item.period)}`} description={`${shortName(d.companyName)} · chave ${item.accessKey}`} />
+        <PageHeader title={`${isSale ? "Venda" : "Compra"} · período ${item.period}`} description={`${shortName(d.companyName)} · chave ${item.accessKey}`} />
         <ItemStatusBadge status={item.status} />
       </div>
 

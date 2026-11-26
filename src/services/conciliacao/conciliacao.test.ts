@@ -119,7 +119,7 @@ describe("Analista: a LLM nunca muda número", () => {
   const facts: ExplanationFacts = {
     ruleId: "R02",
     kind: "debito",
-    period: "2026-10",
+    period: "10/2026",
     invoiceCents: 12000n,
     rfbCents: 13200n,
     diffCents: 1200n,

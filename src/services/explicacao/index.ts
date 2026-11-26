@@ -8,7 +8,7 @@ import type { ItemKind, RuleId } from "@/services/conciliacao/rules";
 export interface ExplanationFacts {
   ruleId: RuleId;
   kind: ItemKind;
-  period: string; // AAAA-MM
+  period: string; // MM/AAAA (contrato da Receita)
   invoiceCents: bigint | null;
   rfbCents: bigint | null;
   diffCents: bigint | null;
@@ -20,14 +20,13 @@ export interface ExplanationFacts {
   otherOrigin: boolean;
 }
 
-const periodBR = (p: string) => `${p.slice(5, 7)}/${p.slice(0, 4)}`;
 const brl = (v: bigint | null) => formatBRL(v ?? 0n);
 const abs = (v: bigint) => (v < 0n ? -v : v);
 
 export function templateExplanation(f: ExplanationFacts): string {
   const what = f.kind === "debito" ? "CBS" : "crédito de CBS";
   const service = f.kind === "debito" ? "débitos" : "créditos";
-  const period = periodBR(f.period);
+  const period = f.period;
   switch (f.ruleId) {
     case "R01":
       return `A nota informa ${what} de ${brl(f.invoiceCents)} e a Receita apurou o mesmo valor para a mesma chave no período ${period}. Nada a fazer.`;

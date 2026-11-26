@@ -36,7 +36,7 @@ export default async function CarteiraPage() {
           <CardHeader>
             <CardDescription>Dinheiro em risco</CardDescription>
             <CardTitle className="text-2xl">
-              <CountUp value={totals.riskCents} format={formatBRL} />
+              <CountUp value={totals.riskCents} currency />
             </CardTitle>
           </CardHeader>
         </Card>
@@ -44,7 +44,7 @@ export default async function CarteiraPage() {
           <CardHeader>
             <CardDescription>Crédito travado</CardDescription>
             <CardTitle className="text-2xl">
-              <CountUp value={totals.lockedCents} format={formatBRL} />
+              <CountUp value={totals.lockedCents} currency />
             </CardTitle>
           </CardHeader>
         </Card>
