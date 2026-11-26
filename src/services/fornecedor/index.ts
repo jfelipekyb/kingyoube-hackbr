@@ -12,6 +12,9 @@ import { recordAudit } from "@/services/auditoria";
 import { recordAgentEvent } from "@/services/equipe";
 import { sendEmailOnce, SIMULATED_STATUS, type OutboundMessage } from "@/services/notificacao";
 import { guardedScrape, type Scraper } from "@/services/vigia/scrape";
+import { chargeState, type SupplierContactInfo } from "./labels";
+
+export { CHARGE_STATE_LABEL, chargeState, type ChargeState, type SupplierContactInfo } from "./labels";
 
 export class SupplierError extends Error {
   constructor(
@@ -232,22 +235,31 @@ export async function chargesForSupplier(db: Db, cnpj: string) {
     .orderBy(desc(outboundMessages.createdAt));
 }
 
-export type ChargeState = "sem_contato" | "contato_encontrado" | "enviada" | "entregue" | "falhou" | "devolvida";
-export const CHARGE_STATE_LABEL: Record<ChargeState, string> = {
-  sem_contato: "sem contato",
-  contato_encontrado: "contato encontrado",
-  enviada: "cobrança enviada",
-  entregue: "cobrança entregue",
-  falhou: "envio falhou",
-  devolvida: "e-mail devolvido",
-};
-
-/** sem_contato → contato_encontrado → enviada → entregue; desvios falhou e devolvida (docs/02). */
-export function chargeState(financeEmail: string | null, lastEmailStatus: string | null | undefined): ChargeState {
-  if (!financeEmail) return "sem_contato";
-  if (!lastEmailStatus) return "contato_encontrado";
-  if (lastEmailStatus === "delivered" || lastEmailStatus === "opened" || lastEmailStatus === "clicked") return "entregue";
-  if (lastEmailStatus === "bounced") return "devolvida";
-  if (lastEmailStatus === "erro" || lastEmailStatus === "failed") return "falhou";
-  return "enviada";
+/** Contato, fonte e cobrança por fornecedor, para as compras do cliente aberto na tela. A nota cobrada é a de maior CBS. */
+export async function supplierContactInfo(db: Db, companyId: string): Promise<Map<string, SupplierContactInfo>> {
+  const rows = await db
+    .select({ cp: counterparties, invoiceId: invoices.id, accessKey: invoices.accessKey, cbsCents: invoices.cbsCents })
+    .from(counterparties)
+    .innerJoin(invoices, and(eq(invoices.counterpartyCnpj, counterparties.cnpj), eq(invoices.companyId, companyId), eq(invoices.direction, "compra")))
+    .orderBy(desc(invoices.cbsCents));
+  const msgs = rows.length
+    ? await db.select().from(outboundMessages).where(and(eq(outboundMessages.kind, "cobranca_fornecedor"), inArray(outboundMessages.refId, rows.map((r) => r.invoiceId)))).orderBy(desc(outboundMessages.createdAt))
+    : [];
+  const out = new Map<string, SupplierContactInfo>();
+  for (const r of rows) {
+    const prev = out.get(r.cp.id);
+    const email = msgs.find((m) => m.refId === r.invoiceId && m.channel === "email") ?? null;
+    if (prev && (prev.email || !email)) continue;
+    out.set(r.cp.id, {
+      siteUrl: r.cp.siteUrl,
+      contactSource: r.cp.contactSource,
+      contactFoundAt: r.cp.contactFoundAt,
+      chargeInvoiceId: r.invoiceId,
+      chargeInvoiceNumber: invoiceNumber(r.accessKey),
+      email,
+      whatsapp: msgs.find((m) => m.refId === r.invoiceId && m.channel === "whatsapp") ?? null,
+      state: chargeState(r.cp.financeEmail, email?.lastStatus),
+    });
+  }
+  return out;
 }
