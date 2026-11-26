@@ -21,7 +21,7 @@ export async function pendingDecisions(db: Db): Promise<Decision[]> {
   const names = new Map((await db.select({ id: companies.id, name: companies.name }).from(companies)).map((c) => [c.id, shortName(c.name)]));
   const out: Decision[] = [];
   for (const c of (await radCandidates(db)).filter((x) => !x.hasDecision)) {
-    out.push({ kind: "rad", title: `Guia de recolhimento (RAD) — ${names.get(c.companyId) ?? "cliente"}`, detail: `Crédito travado de ${formatBRL(c.lockedCents)}. Só sai com a sua aprovação.`, href: "/rad" });
+    out.push({ kind: "rad", title: `Guia de recolhimento (RAD) — ${names.get(c.companyId) ?? "cliente"}`, detail: `Crédito travado de ${formatBRL(c.lockedCents)}. Só sai com a sua aprovação.`, href: `/rad?cliente=${c.companyId}` });
   }
   const items = await db
     .select({ id: reconciliationItems.id, companyId: reconciliationItems.companyId, diffCents: reconciliationItems.diffCents })
