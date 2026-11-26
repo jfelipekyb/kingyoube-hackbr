@@ -181,7 +181,7 @@ export function SalaDaEquipe({ agents, initial }: { agents: AgentCard[]; initial
         </h2>
         {conferente?.status === "revisado_ok" ? <p className="mt-1 text-secundario text-kyb-verde-texto">O Conferente refez tudo do zero e não achou diferença.</p> : null}
         {snap && snap.timeline.length > 0 ? (
-          <ol className="mt-3 flex max-h-[36rem] flex-col gap-3 overflow-y-auto pr-1" aria-live="polite" aria-relevant="additions">
+          <ol className="mt-3 flex max-h-[36rem] flex-col gap-3 overflow-y-auto pr-1" aria-live="polite" aria-relevant="additions" aria-labelledby="sala-linha-do-tempo" tabIndex={0}>
             {snap.timeline.map((e) => (
               <li key={e.id} className="kyb-entrada border-l-2 border-kyb-linha pl-3">
                 <span className="block text-rotulo text-muted-foreground">
