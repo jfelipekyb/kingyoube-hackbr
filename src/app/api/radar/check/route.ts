@@ -6,8 +6,8 @@ import { checkDocs } from "@/services/vigia/radar";
 import { createScraper } from "@/services/vigia/scrape";
 
 export const dynamic = "force-dynamic";
-// 9 páginas em fila (6,5 s entre elas) levam cerca de 1 minuto.
-export const maxDuration = 120;
+// 9 páginas em fila (6,5 s entre elas) levam cerca de 1 a 2 minutos (leitura real: 117 s).
+export const maxDuration = 300;
 
 /** Vercel Cron diário e chamada de operador: sempre `Authorization: Bearer <CRON_SECRET>`. O botão da tela usa a ação do servidor. */
 async function handle(request: Request) {

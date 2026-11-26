@@ -9,6 +9,8 @@ import { compareVersions } from "@/services/vigia/radar";
 import { VerifyButton } from "./verify-button";
 
 export const dynamic = "force-dynamic";
+// O botão "Verificar agora" (ação do servidor) lê 9 páginas em fila: até 2 minutos.
+export const maxDuration = 300;
 
 const when = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
 

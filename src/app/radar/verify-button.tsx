@@ -19,7 +19,7 @@ export function VerifyButton() {
     <div className="mb-4 flex flex-wrap items-center gap-3">
       <Button onClick={run} disabled={pending}>
         <RefreshCw aria-hidden strokeWidth={1.75} className={pending ? "animate-spin" : undefined} />
-        {pending ? "Verificando as 9 páginas (cerca de 1 minuto)…" : "Verificar agora"}
+        {pending ? "Verificando as 9 páginas (1 a 2 minutos)…" : "Verificar agora"}
       </Button>
       {message ? (
         <p role="status" className="text-sm">

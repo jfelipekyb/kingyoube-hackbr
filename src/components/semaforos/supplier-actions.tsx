@@ -20,7 +20,7 @@ export function SupplierActions({
   const [pending, start] = useTransition();
   const call = (path: string, body: Record<string, unknown>, ok: (j: Record<string, unknown>) => string) =>
     start(async () => {
-      const res = await fetch(`/api/fornecedores/${counterpartyId}/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const res = await fetch(`/api/fornecedor/${counterpartyId}/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
       setMessage(res.ok ? ok(json) : String(json.erro ?? "Não deu certo agora."));
       if (res.ok) router.refresh();
