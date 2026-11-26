@@ -23,3 +23,34 @@ export const RAD_ERROR_MESSAGE: Record<RadErrorCode, string> = {
 
 
 export const AWARE_OF_REFUSAL_TEXT = "Estou ciente da recusa do fornecedor";
+
+export interface DecisionView {
+  /** Só o Analista envia o rascunho ao contador (docs/02). */
+  canSubmit: boolean;
+  /** O contador pode aprovar/recusar nesta tela. */
+  canDecide: boolean;
+  /** Por que o contador não pode decidir agora (mostrado na tela). */
+  blockedReason: string | null;
+}
+
+/** O que a tela oferece a cada papel. A trava de verdade continua no servidor (decide/approve). */
+export function decisionView(
+  p: { state: RadState; preparedBy: string; submittedBy: string | null },
+  viewer: { role: "analista" | "contador"; actor: string },
+): DecisionView {
+  const editable = p.state === "rascunho" || p.state === "erro_receita";
+  if (viewer.role === "analista") return { canSubmit: editable, canDecide: false, blockedReason: null };
+  if (editable) {
+    return {
+      canSubmit: false,
+      canDecide: false,
+      blockedReason:
+        "Aprovar direto não é permitido: pela regra (docs/02), o rascunho passa pelo Analista, que envia; o contador decide depois, e quem envia não decide. Peça ao Analista para enviar a proposta.",
+    };
+  }
+  if (p.state !== "aguardando_aprovacao") return { canSubmit: false, canDecide: false, blockedReason: null };
+  if (p.submittedBy === viewer.actor || p.preparedBy === viewer.actor) {
+    return { canSubmit: false, canDecide: false, blockedReason: "Você preparou ou enviou esta proposta: quem envia não decide. Outro contador precisa decidir." };
+  }
+  return { canSubmit: false, canDecide: true, blockedReason: null };
+}

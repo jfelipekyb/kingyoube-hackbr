@@ -107,9 +107,12 @@ export default async function RadProposalPage({ params }: { params: Promise<{ id
                 partialCents: p.partialCents?.toString() ?? null,
                 justification: p.justification,
                 suggestedCents: suggested.toString(),
+                preparedBy: p.preparedBy,
+                submittedBy: p.submittedBy,
               }}
               supplierRed={supplier.light === "vermelho"}
               role={user.role}
+              actor={`usuario:${user.id}`}
             />
             {!["rascunho", "erro_receita", "aguardando_aprovacao", "aprovada"].includes(p.state) && <p className="text-sm text-kyb-mudo">Nenhuma ação pendente nesta proposta.</p>}
           </CardContent>
