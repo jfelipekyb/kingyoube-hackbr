@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Georama } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import { ModeBadge } from "@/components/shell/mode-badge";
@@ -12,6 +13,13 @@ import { currentCompanyId, currentUser } from "@/lib/demo-session";
 import { DEMO_USERS } from "@/seed/demo-data";
 import { listCompanies } from "@/services/carteira";
 
+const georama = Georama({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-georama",
+});
+
 export const metadata: Metadata = {
   title: "Equipe CBS · KingYouBe",
   description: "Equipe digital que confere as notas da carteira com a CBS apurada pela Receita",
@@ -22,7 +30,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const [user, companyId, companies] = await Promise.all([currentUser(), currentCompanyId(), listCompanies(getDb())]);
 
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={georama.variable}>
       <body className="font-sans antialiased">
         <div className="flex min-h-screen">
           <aside className="flex w-60 shrink-0 flex-col gap-6 border-r bg-muted/30 p-4">

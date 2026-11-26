@@ -1,0 +1,26 @@
+/*
+ * Tokens da marca KingYouBe (docs/10, seção 1).
+ * Único arquivo do app com valores de cor: o resto usa estas variáveis
+ * (há teste que procura cor fora daqui).
+ */
+:root {
+  --kyb-azul: #000055;
+  --kyb-azul-2: #000088;
+  --kyb-verde: #00cc99;
+  --kyb-verde-texto: #007a5c;
+  --kyb-canvas: #f7f8fb;
+  --kyb-canvas-2: #eff2f6;
+  --kyb-linha: #dde3ea;
+  --kyb-mudo: #667085;
+  --kyb-alerta: #b54708;
+  --kyb-erro: #b42318;
+  --kyb-branco: #ffffff;
+
+  --kyb-raio: 14px;
+  --kyb-raio-botao: 10px;
+  --kyb-raio-selo: 999px;
+  --kyb-sombra: 0 12px 40px rgba(0, 0, 85, 0.08);
+
+  --kyb-curva: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --kyb-largura-max: 1280px;
+}
