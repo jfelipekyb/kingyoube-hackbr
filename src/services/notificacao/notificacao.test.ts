@@ -54,6 +54,12 @@ describe("Mensageiro: e-mail (Resend) e WhatsApp (SIMULADO)", () => {
     expect(calls[0].url).toBe("https://api.resend.com/emails");
     expect((calls[0].init?.headers as Record<string, string>)["Idempotency-Key"]).toBe(`darf-${proposalId}`);
     expect(JSON.parse(String(calls[0].init?.body))).toMatchObject({ to: [FAKE_TO], subject: expect.stringContaining("DARF do RAD") });
+    const sent = JSON.parse(String(calls[0].init?.body)) as { subject: string; text: string };
+    expect(sent.subject).toMatch(/^\[SIMULADO\] /);
+    expect(sent.text).toContain("Dados simulados — não é consulta real à Receita");
+    expect(sent.text).toContain("aprovado por Carlos Contador");
+    expect(sent.text).toMatch(/Nota: \d{4}…\d{4}/);
+    expect(sent.text).toContain("Este e-mail não confirma pagamento");
     await sendDarfEmail({ db, env, fetch: fetchMock }, proposalId, CONTADOR);
     expect(calls.filter((c) => c.init?.method === "POST")).toHaveLength(1);
     expect(await refreshEmailStatus({ db, env, fetch: fetchMock }, msg)).toMatchObject({ lastStatus: "delivered" });

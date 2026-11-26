@@ -2,8 +2,10 @@
 // Sem RESEND_API_KEY o e-mail é simulado; com a chave, o mesmo código envia de verdade.
 import { createHash } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
-import { companies, emailEvents, outboundMessages, radProposals } from "@/db/schema";
+import { companies, emailEvents, outboundMessages, radProposals, users } from "@/db/schema";
 import type { Db } from "@/db/types";
+import { maskAccessKey } from "@/lib/access-key";
+import { isSimulado, SIMULATED_BADGE } from "@/lib/config";
 import { formatDateBR } from "@/lib/dates";
 import { maskEmail } from "@/lib/mask";
 import { formatBRL } from "@/lib/money";
@@ -35,21 +37,31 @@ async function darfContext(db: Db, proposalId: string) {
     .where(eq(radProposals.id, proposalId));
   if (!row) throw new Error("Proposta não encontrada");
   if (!row.p.darfPix || row.p.totalCents === null || !row.p.dueDate) throw new Error("A proposta ainda não tem DARF gerado");
-  return { ...row.p, companyName: row.companyName.replace(/\s*\(FICTÍCIA\)$/, "") };
+  const approverId = /^usuario:(.+)$/.exec(row.p.approvedBy ?? "")?.[1];
+  const [approver] = approverId ? await db.select({ name: users.name }).from(users).where(eq(users.id, approverId)) : [];
+  return { ...row.p, companyName: row.companyName.replace(/\s*\(FICTÍCIA\)$/, ""), approverName: approver?.name ?? "contador" };
 }
 
-function darfText(c: Awaited<ReturnType<typeof darfContext>>, appUrl: string | undefined) {
+function darfText(c: Awaited<ReturnType<typeof darfContext>>, env: Env) {
+  const appUrl = env.APP_URL;
   const pdf = c.darfPdfUrl ? (c.darfPdfUrl.startsWith("/") && appUrl ? `${appUrl.replace(/\/$/, "")}${c.darfPdfUrl}` : c.darfPdfUrl) : "—";
+  const amount = `Valor total: ${formatBRL(c.totalCents!)} — vencimento ${formatDateBR(c.dueDate!)}.`;
+  const pix = `Pix copia e cola: ${c.darfPix}`;
+  const notPaid = "Este e-mail não confirma pagamento: o pagamento só é confirmado pela consulta de recolhimentos da Receita.";
+  const simulated = isSimulado(env) ? [`${SIMULATED_BADGE}. Pix e código de barras fictícios: não pague.`] : [];
   return {
-    subject: `DARF do RAD — ${c.companyName} — vence ${formatDateBR(c.dueDate!)}`,
+    subject: `${simulated.length ? "[SIMULADO] " : ""}DARF do RAD — ${c.companyName} — vence ${formatDateBR(c.dueDate!)}`,
     lines: [
-      `DARF de recolhimento como adquirente (RAD) aprovado pelo contador para ${c.companyName}.`,
-      `Valor total: ${formatBRL(c.totalCents!)} — vencimento ${formatDateBR(c.dueDate!)}.`,
-      `Pix copia e cola: ${c.darfPix}`,
+      ...simulated,
+      `DARF de recolhimento como adquirente (RAD) aprovado por ${c.approverName} para ${c.companyName}.`,
+      `Nota: ${maskAccessKey(c.accessKey)}`,
+      amount,
+      pix,
       `Código de barras: ${c.darfBarcode}`,
       `PDF: ${pdf}`,
-      "DARF gerado não é DARF pago: o pagamento só é confirmado pela consulta de recolhimentos da Receita.",
+      notPaid,
     ],
+    whatsapp: [...simulated, amount, pix, notPaid],
   };
 }
 
@@ -65,7 +77,7 @@ export async function sendDarfEmail(deps: MensageiroDeps, proposalId: string, ac
   const c = await darfContext(db, proposalId);
   const to = env.FINANCEIRO_EMAIL?.trim();
   const apiKey = env.RESEND_API_KEY?.trim();
-  const { subject, lines } = darfText(c, env.APP_URL);
+  const { subject, lines } = darfText(c, env);
   const toLabel = maskEmail(to) ?? "financeiro (FINANCEIRO_EMAIL não cadastrado)";
   let resendId: string | null = null;
   let status = SIMULATED_STATUS;
@@ -112,8 +124,8 @@ export async function sendDarfWhatsapp(deps: MensageiroDeps, proposalId: string,
   if (existing) return existing;
   if (whatsappMode(env) !== "SIMULADO") throw new Error("WhatsApp real (WHATSAPP_MODE=NVOIP) entra na S9; use WHATSAPP_MODE=SIMULADO");
   const c = await darfContext(db, proposalId);
-  const { lines } = darfText(c, env.APP_URL);
-  const body = [`Olá, financeiro da ${c.companyName}! Aqui é o Mensageiro da KingYouBe.`, ...lines.slice(1, 3), lines[5]].join("\n");
+  const { whatsapp } = darfText(c, env);
+  const body = [`Olá, financeiro da ${c.companyName}! Aqui é o Mensageiro da KingYouBe.`, ...whatsapp].join("\n");
   const [row] = await db
     .insert(outboundMessages)
     .values({ channel: "whatsapp", kind: "darf", refId: proposalId, toLabel: "Financeiro do cliente (WhatsApp simulado)", idempotencyKey: key, lastStatus: SIMULATED_STATUS, body })
