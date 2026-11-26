@@ -6,7 +6,7 @@ import { addDays, brasiliaDateTime } from "@/lib/dates";
 import { recordAudit } from "@/services/auditoria";
 import { RECEITA_DOCS_BASE, WATCHED_PAGES } from "@/services/receita/contract";
 import { buildDemoData, DEMO_USERS } from "./demo-data";
-import { EFFORT_STANDARDS } from "./effort";
+import { EFFORT_STANDARDS, TEAM_PREMISES } from "./effort";
 
 export interface SeedOptions {
   demoToday: string;
@@ -43,6 +43,7 @@ const RESET_ORDER = [
   s.companies,
   s.users,
   s.effortStandards,
+  s.teamPremises,
 ] as const;
 
 export async function seedDemo(db: Db, options: SeedOptions): Promise<SeedCounts> {
@@ -88,6 +89,7 @@ export async function seedDemo(db: Db, options: SeedOptions): Promise<SeedCounts
     }));
     for (let i = 0; i < rows.length; i += 200) await tx.insert(s.invoices).values(rows.slice(i, i + 200));
     await tx.insert(s.effortStandards).values(EFFORT_STANDARDS.map((e) => ({ ...e, source: "premissa", updatedBy: "seed" })));
+    await tx.insert(s.teamPremises).values(TEAM_PREMISES.map((p) => ({ ...p, updatedBy: "seed" })));
     // O Radar não é dado de demonstração: o reset diário preserva versões, diffs e alertas já lidos.
     await tx
       .insert(s.docWatch)

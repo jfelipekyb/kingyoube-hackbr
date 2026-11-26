@@ -8,3 +8,10 @@ export const EFFORT_STANDARDS = [
   { task: "escrever_email", label: "Escrever e enviar um e-mail de cobrança ou aviso", minutes: 5 },
   { task: "ler_documentacao", label: "Conferir uma página da documentação da Receita", minutes: 5 },
 ] as const;
+
+// Premissas da projeção (docs/06, docs/09).
+export const TEAM_PREMISES = [
+  { key: "rodadas_por_mes", label: "Rodadas por mês (uma rodada = um mês de conferência da carteira)", value: 1 },
+  { key: "clientes_projecao", label: "Clientes na projeção", value: 200 },
+  { key: "horas_pessoa_mes", label: "Horas de trabalho de uma pessoa por mês", value: 168 },
+] as const;

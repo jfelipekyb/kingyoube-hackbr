@@ -67,6 +67,7 @@ describe("Rodada da equipe (docs/09)", () => {
     });
     expect(first.run.steps.conferente?.status).toBe("revisado_ok");
     expect(first.run.counts).toEqual({
+      clientes: 12,
       sincronizar_servico: 48,
       conferir_nota: 413,
       investigar_divergencia: 8,

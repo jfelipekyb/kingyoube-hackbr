@@ -415,6 +415,15 @@ export const effortStandards = pgTable("effort_standards", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Premissas da projeção (docs/09): editáveis só pelo Contador, como as de `effort_standards`. */
+export const teamPremises = pgTable("team_premises", {
+  key: text("key").primaryKey(),
+  label: text("label").notNull(),
+  value: integer("value").notNull(),
+  updatedBy: text("updated_by"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const kimQueries = pgTable("kim_queries", {
   id: uuid("id").primaryKey().defaultRandom(),
   at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),

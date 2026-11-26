@@ -61,7 +61,8 @@ interface Outcome {
   done: boolean;
   summary?: string;
   status?: RunStepState["status"];
-  counts?: Partial<Record<EffortTask, number>>;
+  /** Tarefas feitas de fato (horas) e `clientes` da rodada (base da projeção). */
+  counts?: Partial<Record<EffortTask | "clientes", number>>;
   cursor?: Record<string, unknown>;
   /** Se o serviço já gravou o próprio evento-resumo com o runId, não duplica. */
   eventRecorded?: boolean;
@@ -85,7 +86,7 @@ async function captura({ deps }: Ctx): Promise<Outcome> {
   const [row] = await deps.db
     .select({ notes: sql<number>`count(*)::int`, clients: sql<number>`count(distinct ${invoices.companyId})::int` })
     .from(invoices);
-  return { done: true, summary: `Recebi ${plural(row.notes, "nota", "notas")} de ${plural(row.clients, "cliente", "clientes")}.` };
+  return { done: true, summary: `Recebi ${plural(row.notes, "nota", "notas")} de ${plural(row.clients, "cliente", "clientes")}.`, counts: { clientes: row.clients } };
 }
 
 async function apuracao({ deps, env, now, run, cursor }: Ctx): Promise<Outcome> {
@@ -323,7 +324,7 @@ export async function runAgentStep(deps: RunDeps, runId: string, agent: string):
     .where(eq(agentRuns.id, runId))
     .returning();
   if (outcome.done) {
-    const total = Object.values(outcome.counts ?? {}).reduce((a, b) => a + (b ?? 0), 0);
+    const total = Object.entries(outcome.counts ?? {}).reduce((a, [k, v]) => (k === "clientes" ? a : a + (v ?? 0)), 0);
     if (!outcome.eventRecorded) {
       await recordAgentEvent(db, { runId, agent, action: "rodada", entity: "agent_run", entityId: runId, status: step.status, summary: step.summary!, count: total });
     }

@@ -57,6 +57,13 @@
       "when": 1795733640673,
       "tag": "0007_s6_conferente_rodada",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795734198605,
+      "tag": "0008_s6_premissas",
+      "breakpoints": true
     }
   ]
 }
