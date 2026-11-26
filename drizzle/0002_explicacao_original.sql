@@ -1,0 +1,1 @@
+ALTER TABLE "reconciliation_items" ADD COLUMN "explanation_original" text;

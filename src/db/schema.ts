@@ -249,6 +249,8 @@ export const reconciliationItems = pgTable(
     diffCents: cents("diff_cents"),
     ruleId: varchar("rule_id", { length: 8 }).notNull(),
     explanation: text("explanation"),
+    // Texto do modelo fixo por regra; quando a LLM reescreve, `explanation` guarda a versão reescrita (docs/04).
+    explanationOriginal: text("explanation_original"),
     computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
     contractVersion: text("contract_version").notNull(),
   },
