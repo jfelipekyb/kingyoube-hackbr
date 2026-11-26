@@ -25,8 +25,33 @@ export function clientIp(headers: Headers): string {
 }
 
 /** IP nunca vai para a base em claro (LGPD, docs/07). */
-export function hashIp(ip: string): string {
-  return createHash("sha256").update(`demo-reiniciar:${ip}`).digest("hex");
+export function hashIp(ip: string, scope = "demo-reiniciar"): string {
+  return createHash("sha256").update(`${scope}:${ip}`).digest("hex");
+}
+
+/**
+ * Limite de 1 ação por janela por IP (só o hash do IP vai para a auditoria). Devolve os segundos de espera, ou null se liberou.
+ * A ação liberada fica gravada como `action` com resultado "ok"; a barrada, como "limitado".
+ */
+export async function limitPerIp(db: Db, input: { action: string; ip: string; windowMs?: number; now?: Date }): Promise<number | null> {
+  const now = input.now ?? new Date();
+  const windowMs = input.windowMs ?? 60_000;
+  const ipHash = hashIp(input.ip, input.action);
+  const since = new Date(now.getTime() - windowMs);
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${ipHash}))`);
+    const recent = await tx
+      .select({ at: auditLog.at })
+      .from(auditLog)
+      .where(and(eq(auditLog.action, input.action), eq(auditLog.result, "ok"), gt(auditLog.at, since), sql`${auditLog.details}->>'ipHash' = ${ipHash}`))
+      .limit(1);
+    if (recent.length > 0) {
+      await recordAudit(tx, { actor: "sistema:limite", action: input.action, entity: "limite_ip", result: "limitado", details: { ipHash } });
+      return Math.max(Math.ceil((recent[0].at.getTime() + windowMs - now.getTime()) / 1000), 1);
+    }
+    await recordAudit(tx, { actor: "sistema:limite", action: input.action, entity: "limite_ip", result: "ok", details: { ipHash }, at: now });
+    return null;
+  });
 }
 
 export async function resetDemo(db: Db, actor: string, reason: string, env: Env = process.env): Promise<SeedCounts> {
