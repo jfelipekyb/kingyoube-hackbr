@@ -14,7 +14,8 @@ const POPOVER_WIDTH = 340;
 const PAD = 6;
 
 function findTarget(target: string): HTMLElement | null {
-  const list = document.querySelectorAll<HTMLElement>(`[data-tour="${target}"]`);
+  // O último visível ganha: o elemento da tela (ex.: tabela da Carteira) vem depois do menu.
+  const list = [...document.querySelectorAll<HTMLElement>(`[data-tour="${target}"]`)].reverse();
   for (const el of list) {
     const r = el.getBoundingClientRect();
     if (r.width > 0 && r.height > 0) return el;
