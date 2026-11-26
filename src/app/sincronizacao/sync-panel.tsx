@@ -1,7 +1,12 @@
 "use client";
 
+import { CloudDownload, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AgentStatus, type AgentState } from "@/components/ui/agent-status";
 import { Button } from "@/components/ui/button";
+import { CountUp } from "@/components/ui/count-up";
+import { LockedButton } from "@/components/ui/locked-button";
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { RequestState, SyncOverview } from "@/services/receita/sync";
@@ -25,14 +30,14 @@ const STATE_LABEL: Record<RequestState, string> = {
   expirada: "expirada",
 };
 
-const STATE_CLASS: Record<RequestState, string> = {
-  solicitada: "border-sky-300 bg-sky-50 text-sky-900 animate-pulse",
-  em_processamento: "border-indigo-300 bg-indigo-50 text-indigo-900 animate-pulse",
-  concluida: "border-violet-300 bg-violet-50 text-violet-900 animate-pulse",
-  baixada: "border-violet-300 bg-violet-50 text-violet-900 animate-pulse",
-  normalizada: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  erro: "border-red-300 bg-red-50 text-red-900",
-  expirada: "border-red-300 bg-red-50 text-red-900",
+const STATE_TONE: Record<RequestState, StatusTone> = {
+  solicitada: "aguardando",
+  em_processamento: "aguardando",
+  concluida: "aguardando",
+  baixada: "aguardando",
+  normalizada: "conciliado",
+  erro: "divergente",
+  expirada: "divergente",
 };
 
 const OPEN: RequestState[] = ["solicitada", "em_processamento", "concluida", "baixada"];
@@ -40,13 +45,15 @@ const OPEN: RequestState[] = ["solicitada", "em_processamento", "concluida", "ba
 const dateTime = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "medium", timeZone: "America/Sao_Paulo" });
 
 function StateBadge({ state }: { state: RequestState | null }) {
-  if (!state) return <span className="text-muted-foreground">nunca sincronizado</span>;
+  if (!state) return <StatusBadge tone="aguardando">nunca sincronizado</StatusBadge>;
   return (
-    <span data-state={state} className={cn("inline-flex rounded-md border px-2 py-0.5 text-xs font-medium", STATE_CLASS[state])}>
+    <StatusBadge tone={STATE_TONE[state]} data-state={state}>
       {STATE_LABEL[state]}
-    </span>
+    </StatusBadge>
   );
 }
+
+const countFormat = (v: bigint) => v.toLocaleString("pt-BR");
 
 export function SyncPanel({ initial, companyId }: { initial: SyncOverview; companyId: string | null }) {
   const [overview, setOverview] = useState(initial);
@@ -56,7 +63,20 @@ export function SyncPanel({ initial, companyId }: { initial: SyncOverview; compa
   const polling = useRef(false);
   const startedAt = useRef<number | null>(null);
 
+  const previous = useRef<Map<string, RequestState | null> | null>(null);
+  const [flash, setFlash] = useState<Set<string>>(new Set());
+
   useEffect(() => setOverview(initial), [initial]);
+
+  // Linha que muda de estado ganha o destaque verde que some aos poucos.
+  useEffect(() => {
+    const now = new Map(overview.companies.flatMap((c) => c.services.map((s) => [`${c.id}:${s.service}`, s.state] as const)));
+    const before = previous.current;
+    previous.current = now;
+    if (!before) return;
+    const changed = [...now].filter(([k, v]) => before.has(k) && before.get(k) !== v && v === "normalizada").map(([k]) => k);
+    if (changed.length > 0) setFlash((f) => new Set([...f, ...changed]));
+  }, [overview]);
 
   const call = useCallback(
     async (path: string, body: Record<string, unknown>, apply = true) => {
@@ -117,10 +137,11 @@ export function SyncPanel({ initial, companyId }: { initial: SyncOverview; compa
       <div className="flex flex-wrap items-center gap-3">
         {!companyId ? (
           <Button onClick={() => sync(null)} disabled={busy !== null || overview.open > 0}>
+            <CloudDownload aria-hidden strokeWidth={1.75} />
             Sincronizar a carteira
           </Button>
         ) : null}
-        <span className="text-sm text-muted-foreground" aria-live="polite">
+        <span className="text-secundario text-muted-foreground" aria-live="polite">
           {overview.open > 0
             ? `${overview.open} ${overview.open === 1 ? "consulta em andamento" : "consultas em andamento"} — atualizando a cada 2 s`
             : elapsed !== null
@@ -128,33 +149,57 @@ export function SyncPanel({ initial, companyId }: { initial: SyncOverview; compa
               : "Nenhuma consulta em andamento"}
         </span>
       </div>
-      {error ? <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="flex items-start gap-2 rounded-kyb border border-kyb-erro/40 bg-kyb-erro/10 px-4 py-3 text-sm text-kyb-erro">
+          <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />
+          {error}
+        </p>
+      ) : null}
       {risks.length > 0 ? (
-        <div role="alert" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          <strong>Janela em risco:</strong> a Receita só devolve os últimos 8 dias.{" "}
-          {risks.map((r) => `${r.company} · ${SERVICE_LABEL[r.service]} (${r.days} dias)`).join("; ")}.
+        <div role="alert" className="flex items-start gap-2 rounded-kyb border border-kyb-alerta/40 bg-kyb-alerta/10 px-4 py-3 text-sm text-kyb-alerta">
+          <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />
+          <span>
+            <strong>Janela em risco:</strong> a Receita só devolve os últimos 8 dias.{" "}
+            {risks.map((r) => `${r.company} · ${SERVICE_LABEL[r.service]} (${r.days} dias)`).join("; ")}.
+          </span>
         </div>
       ) : null}
 
-      {overview.companies.map((c) => {
+      {overview.companies.map((c, index) => {
         const open = c.services.some((s) => s.state && OPEN.includes(s.state));
         const remaining = c.services.reduce((n, s) => n + Math.max(s.quotaLimit - s.quotaUsed, 0), 0);
+        const done = c.services.every((s) => s.state === "normalizada");
+        const agentState: AgentState = open || busy === c.id ? "trabalhando" : done ? "feito" : "parado";
+        const lockReason = open
+          ? "Aguarde: a Receita ainda está processando as consultas deste cliente."
+          : remaining === 0
+            ? "Cota de hoje esgotada para este cliente. Tente de novo amanhã."
+            : null;
         return (
-          <section key={c.id} className="rounded-lg border" aria-label={c.name}>
-            <header className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
-              <h2 className="font-semibold">{c.name}</h2>
-              <span className="text-xs text-muted-foreground">
-                {c.counts.debits} débitos · {c.counts.credits} créditos · {c.counts.payments} pagamentos/recolhimentos na base
+          <section
+            key={c.id}
+            aria-label={c.name}
+            className="kyb-entrada rounded-kyb border border-kyb-linha bg-kyb-branco transition-shadow duration-150 ease-kyb hover:shadow-kyb"
+            style={{ "--kyb-ordem": index } as React.CSSProperties}
+          >
+            <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-kyb-linha px-5 py-4">
+              <h2 className="text-lg">{c.name}</h2>
+              <AgentStatus name="Apuração" icon={CloudDownload} state={agentState} className="text-secundario" />
+              <span className="text-secundario text-muted-foreground">
+                <CountUp value={c.counts.debits} format={countFormat} /> débitos · <CountUp value={c.counts.credits} format={countFormat} /> créditos ·{" "}
+                <CountUp value={c.counts.payments} format={countFormat} /> pagamentos/recolhimentos na base
               </span>
-              <Button
-                className="ml-auto"
-                size="sm"
-                variant="outline"
-                onClick={() => sync(c.id)}
-                disabled={busy !== null || open || remaining === 0}
-              >
-                {busy === c.id ? "Pedindo…" : "Sincronizar agora"}
-              </Button>
+              <div className="ml-auto">
+                {lockReason ? (
+                  <LockedButton reason={lockReason} size="sm" variant={companyId ? "default" : "outline"}>
+                    Sincronizar agora
+                  </LockedButton>
+                ) : (
+                  <Button size="sm" variant={companyId ? "default" : "outline"} onClick={() => sync(c.id)} disabled={busy !== null}>
+                    {busy === c.id ? "Pedindo…" : "Sincronizar agora"}
+                  </Button>
+                )}
+              </div>
             </header>
             <Table>
               <TableHeader>
@@ -168,25 +213,44 @@ export function SyncPanel({ initial, companyId }: { initial: SyncOverview; compa
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {c.services.map((s) => (
-                  <TableRow key={s.service} data-service={s.service}>
-                    <TableCell className="font-medium">{SERVICE_LABEL[s.service]}</TableCell>
-                    <TableCell>
-                      <StateBadge state={s.state} />
-                    </TableCell>
-                    <TableCell className="text-xs">{s.requestedAt ? dateTime.format(new Date(s.requestedAt)) : "—"}</TableCell>
-                    <TableCell className={cn("text-sm", s.quotaUsed >= s.quotaLimit && "font-medium text-red-700")}>
-                      {Math.max(s.quotaLimit - s.quotaUsed, 0)} de {s.quotaLimit}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {s.lastCompletedAt ? dateTime.format(new Date(s.lastCompletedAt)) : "—"}
-                      {s.windowAtRisk ? <span className="ml-2 font-medium text-amber-700">janela em risco ({s.windowDays} dias)</span> : null}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {s.errorCode ? `${s.errorCode}${s.errorMessage ? ` — ${s.errorMessage}` : ""}` : ""}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {c.services.map((s) => {
+                  const key = `${c.id}:${s.service}`;
+                  return (
+                    <TableRow
+                      key={s.service}
+                      data-service={s.service}
+                      className={cn(flash.has(key) && "kyb-destaque")}
+                      onAnimationEnd={(e) => {
+                        if (e.animationName !== "kyb-destaque") return;
+                        setFlash((f) => {
+                          const next = new Set(f);
+                          next.delete(key);
+                          return next;
+                        });
+                      }}
+                    >
+                      <TableCell className="font-semibold">{SERVICE_LABEL[s.service]}</TableCell>
+                      <TableCell>
+                        <StateBadge state={s.state} />
+                      </TableCell>
+                      <TableCell className="text-secundario">{s.requestedAt ? dateTime.format(new Date(s.requestedAt)) : "—"}</TableCell>
+                      <TableCell className={cn("text-sm", s.quotaUsed >= s.quotaLimit && "font-semibold text-kyb-erro")}>
+                        {Math.max(s.quotaLimit - s.quotaUsed, 0)} de {s.quotaLimit}
+                      </TableCell>
+                      <TableCell className="text-secundario">
+                        {s.lastCompletedAt ? dateTime.format(new Date(s.lastCompletedAt)) : "—"}
+                        {s.windowAtRisk ? (
+                          <StatusBadge tone="atencao" className="ml-2">
+                            janela em risco ({s.windowDays} dias)
+                          </StatusBadge>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="text-secundario text-muted-foreground">
+                        {s.errorCode ? `${s.errorCode}${s.errorMessage ? ` — ${s.errorMessage}` : ""}` : ""}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </section>
