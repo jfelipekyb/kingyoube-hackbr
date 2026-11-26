@@ -113,6 +113,32 @@ describe("Rodada da equipe (docs/09)", () => {
     expect(second.run.steps.vigia?.summary).toBe("As 9 páginas da Receita foram lidas há menos de 24 h: usei essa leitura.");
   });
 
+  it("proposta recusada pelo contador não volta como rascunho na rodada seguinte", async () => {
+    const [p] = await db.select().from(s.radProposals).limit(1);
+    await db.update(s.radProposals).set({ state: "recusada" }).where(eq(s.radProposals.id, p.id));
+    const before = await countOf(s.radProposals);
+    clock.t += 60 * 60_000;
+    const r = await runRound();
+    expect(r.run.status).toBe("concluida");
+    expect(await countOf(s.radProposals)).toBe(before);
+    expect(r.run.counts).toMatchObject({ preparar_rad: 0 });
+  });
+
+  it("site do fornecedor ilegível (APP_URL público sem Firecrawl) não para a rodada", async () => {
+    await db.update(s.counterparties).set({ financeEmail: null }).where(sql`${s.counterparties.siteUrl} is not null`);
+    const saved = deps;
+    deps = { ...deps, env: { ...env, APP_URL: "https://kingyoube-hackbr.vercel.app" }, scraper: null };
+    try {
+      clock.t += 60 * 60_000;
+      const r = await runRound();
+      expect(r.run.status).toBe("concluida");
+      expect(r.run.steps.vigia?.summary).toContain("Não consegui ler o site do Moinho Estrela.");
+      expect(r.run.steps.kim?.status).toBe("feito");
+    } finally {
+      deps = saved;
+    }
+  });
+
   it("dois cliques em Rodar a equipe abrem uma só rodada", async () => {
     const a = await startRun(deps, "usuario:teste");
     const b = await startRun(deps, "usuario:teste");

@@ -1,6 +1,6 @@
 // Rodada da equipe (docs/09): uma chamada por agente, na ordem da tabela; idempotente.
 // Cada agente é fachada fina sobre o serviço de domínio. Nenhum agente aprova nada: a rodada só prepara.
-import { and, desc, eq, gte, inArray, isNotNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, lt, ne, notInArray, or, sql } from "drizzle-orm";
 import { agentEvents, agentRuns, companies, counterparties, docWatch, invoices, outboundMessages, radProposals, reconciliationItems, rfbRequests, type RunStepState } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { isSimulado, type Env } from "@/lib/config";
@@ -94,9 +94,13 @@ async function apuracao({ deps, env, now, run, cursor }: Ctx): Promise<Outcome> 
   const apDeps = { db, env, now, runId: run.id, adapter: createReceitaAdapter(db, env, { now, fetch: deps.fetch }) };
   if (!cursor.opened) await syncPortfolio(apDeps);
   for (let i = 0; i < APURACAO_MAX_POLLS; i++) await pollRequests(apDeps);
-  // Pedidos abertos nesta rodada (o relógio da rodada é o mesmo dos pedidos).
-  const rows = await db.select({ state: rfbRequests.state }).from(rfbRequests).where(gte(rfbRequests.requestedAt, run.startedAt));
-  const open = rows.filter((r) => !["normalizada", "erro", "expirada"].includes(r.state)).length;
+  // Pedidos desta rodada e os que ela reaproveitou (abertos antes e ainda em andamento): a conciliação só começa quando todos terminam.
+  const ended = ["normalizada", "erro", "expirada"] as const;
+  const rows = await db
+    .select({ state: rfbRequests.state })
+    .from(rfbRequests)
+    .where(or(gte(rfbRequests.requestedAt, run.startedAt), gte(rfbRequests.downloadedAt, run.startedAt), notInArray(rfbRequests.state, [...ended])));
+  const open = rows.filter((r) => !(ended as readonly string[]).includes(r.state)).length;
   if (open > 0) return { done: false, cursor: { opened: true }, summary: `Buscando ${plural(rows.length, "arquivo", "arquivos")} na Receita${isSimulado(env) ? " (simulado)" : ""}…` };
   const files = rows.filter((r) => r.state === "normalizada").length;
   const failed = rows.length - files;
@@ -137,8 +141,9 @@ const OPEN = ["rascunho", "aguardando_aprovacao", "aprovada", "darf_gerado", "er
 async function tesouraria({ deps }: Ctx): Promise<Outcome> {
   const { db } = deps;
   const candidates = (await radCandidates(db)).filter((c) => !c.hasDecision);
+  // Qualquer proposta já feita para a compra (aberta ou recusada pelo contador) não é refeita pela Tesouraria.
   const openBefore = new Set(
-    (await db.select({ invoiceId: radProposals.invoiceId }).from(radProposals).where(inArray(radProposals.state, [...OPEN]))).map((p) => p.invoiceId),
+    (await db.select({ invoiceId: radProposals.invoiceId }).from(radProposals).where(inArray(radProposals.state, [...OPEN, "recusada"]))).map((p) => p.invoiceId),
   );
   let created = 0;
   for (const c of candidates) {
@@ -172,8 +177,12 @@ async function vigia({ deps, env, now }: Ctx): Promise<Outcome> {
     .where(and(inArray(docWatch.url, RADAR_URLS), gte(docWatch.lastCheckedAt, new Date(now().getTime() - RADAR_CACHE_MS))));
   let pages = 0;
   let pagesText: string;
-  if (fresh.length === RADAR_URLS.length) {
-    pagesText = `As ${fmt(RADAR_URLS.length)} páginas da Receita foram lidas há menos de 24 h: usei essa leitura.`;
+  // Uma leitura nas últimas 24 h vale para a rodada (mesmo parcial): no máximo uma fila de páginas pagas por dia.
+  if (fresh.length > 0) {
+    pagesText =
+      fresh.length === RADAR_URLS.length
+        ? `As ${fmt(RADAR_URLS.length)} páginas da Receita foram lidas há menos de 24 h: usei essa leitura.`
+        : `${plural(fresh.length, "página da Receita foi lida", "páginas da Receita foram lidas")} há menos de 24 h: usei essa leitura.`;
   } else if (!scraper) {
     pagesText = "Sem FIRECRAWL_API_KEY: não li as páginas da Receita.";
   } else {
@@ -182,20 +191,30 @@ async function vigia({ deps, env, now }: Ctx): Promise<Outcome> {
     pagesText = `Verifiquei ${plural(pages, "página", "páginas")} da Receita.${r.changed ? ` ${plural(r.changed, "mudou", "mudaram")}: avisei por e-mail.` : ""}`;
   }
   const found: string[] = [];
+  const missed: string[] = [];
   const seen = new Set<string>();
   for (const { cp } of await candidateSuppliers(db)) {
     if (!cp || cp.financeEmail || !cp.siteUrl || seen.has(cp.id)) continue;
     seen.add(cp.id);
-    const r = await findSupplierContact({ db, env, now, fetch: deps.fetch, scraper }, cp.id, "agente:vigia");
-    if (r.status === "contato_encontrado") found.push(slugName(cp.siteUrl.split("/").pop()!));
+    const name = slugName(cp.siteUrl.split("/").pop()!);
+    try {
+      const r = await findSupplierContact({ db, env, now, fetch: deps.fetch, scraper }, cp.id, "agente:vigia");
+      if (r.status === "contato_encontrado") found.push(name);
+    } catch {
+      // Sem Firecrawl com APP_URL público, site fora do ar etc.: a rodada segue e o Mensageiro cobra quem tem contato.
+      missed.push(name);
+    }
   }
-  const contactText = found.length ? ` Achei o contato financeiro ${found.map((n) => `do ${n}`).join(" e ")}.` : "";
+  const contactText =
+    (found.length ? ` Achei o contato financeiro ${found.map((n) => `do ${n}`).join(" e ")}.` : "") +
+    (missed.length ? ` Não consegui ler o site ${missed.map((n) => `do ${n}`).join(" e ")}.` : "");
   return { done: true, summary: `${pagesText}${contactText}`, counts: { ler_documentacao: pages, achar_contato: found.length } };
 }
 
 async function mensageiro({ deps, env, now }: Ctx): Promise<Outcome> {
   const { db } = deps;
   let sent = 0;
+  let failed = 0;
   let already = 0;
   const suppliers = new Set<string>();
   for (const { candidate, cp } of await candidateSuppliers(db)) {
@@ -205,16 +224,23 @@ async function mensageiro({ deps, env, now }: Ctx): Promise<Outcome> {
       already++;
       continue;
     }
-    await notifySupplier({ db, env, now, fetch: deps.fetch }, candidate.invoiceId, "agente:mensageiro");
+    const { email } = await notifySupplier({ db, env, now, fetch: deps.fetch }, candidate.invoiceId, "agente:mensageiro");
+    if (email.lastStatus === "erro") {
+      failed++;
+      continue;
+    }
     sent++;
     suppliers.add(cp.id);
   }
+  const failedText = failed ? ` ${plural(failed, "e-mail foi recusado", "e-mails foram recusados")} pela Resend.` : "";
   const summary =
-    sent > 0
+    (sent > 0
       ? `Cobrei ${plural(suppliers.size, "fornecedor", "fornecedores")} por e-mail.`
-      : already > 0
+      : failed > 0
+        ? "Nenhuma cobrança saiu."
+        : already > 0
         ? `Nenhum e-mail novo: ${plural(already, "cobrança já tinha saído", "cobranças já tinham saído")}.`
-        : "Nenhum fornecedor a cobrar.";
+        : "Nenhum fornecedor a cobrar.") + failedText;
   return { done: true, summary, counts: { escrever_email: sent } };
 }
 
