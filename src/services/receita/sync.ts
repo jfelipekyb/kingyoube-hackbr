@@ -6,6 +6,7 @@ import type { Db } from "@/db/types";
 import { receitaMode, type Env } from "@/lib/config";
 import { addDays, brasiliaDay, daysBetween } from "@/lib/dates";
 import { recordAgentEvent, type AgentEventStatus } from "@/services/equipe";
+import { confirmRadPayments } from "@/services/rad/confirm";
 import { normalizeFile, storeRawFile } from "./normalize";
 import { ReceitaFileError } from "./parser";
 import { piiHashKey } from "./pii";
@@ -359,7 +360,8 @@ export async function pollRequests(deps: ApuracaoDeps, filter: { companyId?: str
     await processRequest(deps, r.id);
     processed++;
   }
-  return { processed };
+  const rad = processed > 0 ? await confirmRadPayments({ db: deps.db, env: deps.env, now: deps.now }, filter.companyId ?? null) : null;
+  return { processed, rad };
 }
 
 async function lastCompleted(db: Db, companyIds: string[], mode: Mode): Promise<Map<string, Date>> {
