@@ -99,7 +99,12 @@ async function apuracao({ deps, env, now, run, cursor }: Ctx): Promise<Outcome> 
   const rows = await db
     .select({ state: rfbRequests.state })
     .from(rfbRequests)
-    .where(or(gte(rfbRequests.requestedAt, run.startedAt), gte(rfbRequests.downloadedAt, run.startedAt), notInArray(rfbRequests.state, [...ended])));
+    .where(
+      and(
+        eq(rfbRequests.mode, apDeps.adapter.mode),
+        or(gte(rfbRequests.requestedAt, run.startedAt), gte(rfbRequests.downloadedAt, run.startedAt), notInArray(rfbRequests.state, [...ended])),
+      ),
+    );
   const open = rows.filter((r) => !(ended as readonly string[]).includes(r.state)).length;
   if (open > 0) return { done: false, cursor: { opened: true }, summary: `Buscando ${plural(rows.length, "arquivo", "arquivos")} na Receita${isSimulado(env) ? " (simulado)" : ""}…` };
   const files = rows.filter((r) => r.state === "normalizada").length;
