@@ -1,10 +1,10 @@
--- Proposta aberta duplicada (corrida da S4): mantém a mais antiga e recusa os rascunhos extras antes do índice.
+-- Proposta aberta duplicada (corrida da S4): mantém a mais avançada (ou a de menor id) e recusa os rascunhos extras antes do índice.
 UPDATE "rad_proposals" SET "state" = 'recusada', "rejection_reason" = 'Duplicada: outra proposta aberta já cobre esta nota (migration 0005).'
 WHERE "state" in ('rascunho', 'erro_receita')
   AND EXISTS (
     SELECT 1 FROM "rad_proposals" o
     WHERE o."company_id" = "rad_proposals"."company_id" AND o."invoice_id" = "rad_proposals"."invoice_id"
       AND o."state" in ('rascunho', 'aguardando_aprovacao', 'aprovada', 'darf_gerado', 'erro_receita')
-      AND (o."state" not in ('rascunho', 'erro_receita') OR o."created_at" < "rad_proposals"."created_at" OR (o."created_at" = "rad_proposals"."created_at" AND o."id" < "rad_proposals"."id"))
+      AND (o."state" not in ('rascunho', 'erro_receita') OR o."id" < "rad_proposals"."id")
   );--> statement-breakpoint
 CREATE UNIQUE INDEX "rad_proposals_open_invoice_uq" ON "rad_proposals" USING btree ("company_id","invoice_id") WHERE "rad_proposals"."state" in ('rascunho', 'aguardando_aprovacao', 'aprovada', 'darf_gerado', 'erro_receita');
