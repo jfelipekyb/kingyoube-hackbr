@@ -22,18 +22,27 @@ function findTarget(target: string): HTMLElement | null {
   return null;
 }
 
-function place(rect: Rect): { placement: Placement; top: number; left: number } {
+function safeStorage(): Storage | undefined {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+function place(rect: Rect): { placement: Placement; top: number; left: number; width: number } {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const clampTop = (t: number) => Math.min(Math.max(t, 12), vh - 220);
-  if (rect.left + rect.width + GAP + POPOVER_WIDTH < vw - 12) {
-    return { placement: "right", top: clampTop(rect.top - 8), left: rect.left + rect.width + GAP };
+  const width = Math.min(POPOVER_WIDTH, vw - 24);
+  const clampTop = (t: number) => Math.max(Math.min(t, vh - 220), 12);
+  if (rect.left + rect.width + GAP + width < vw - 12) {
+    return { placement: "right", top: clampTop(rect.top - 8), left: rect.left + rect.width + GAP, width };
   }
   if (rect.top + rect.height + GAP + 200 < vh) {
-    const left = Math.min(Math.max(rect.left + rect.width - POPOVER_WIDTH, 12), vw - POPOVER_WIDTH - 12);
-    return { placement: "bottom", top: rect.top + rect.height + GAP, left };
+    const left = Math.max(Math.min(rect.left + rect.width - width, vw - width - 12), 12);
+    return { placement: "bottom", top: rect.top + rect.height + GAP, left, width };
   }
-  return { placement: "left", top: clampTop(rect.top - 8), left: Math.max(rect.left - GAP - POPOVER_WIDTH, 12) };
+  return { placement: "left", top: clampTop(rect.top - 8), left: Math.max(rect.left - GAP - width, 12), width };
 }
 
 export function Tour() {
@@ -53,7 +62,7 @@ export function Tour() {
   }, []);
 
   const close = useCallback(() => {
-    writeTourSeen(window.localStorage);
+    writeTourSeen(safeStorage());
     setSteps(null);
     setRect(null);
     triggerRef.current?.focus();
@@ -61,13 +70,7 @@ export function Tour() {
 
   // Primeira visita: abre sozinho.
   useEffect(() => {
-    let storage: Storage | undefined;
-    try {
-      storage = window.localStorage;
-    } catch {
-      storage = undefined;
-    }
-    if (readTourSeen(storage)) return;
+    if (readTourSeen(safeStorage())) return;
     const timer = window.setTimeout(open, 700);
     return () => window.clearTimeout(timer);
   }, [open]);
@@ -184,7 +187,7 @@ export function Tour() {
           tabIndex={-1}
           data-placement={pos.placement}
           className="kyb-entrada kyb-balao-tour fixed z-50 rounded-kyb border border-kyb-linha bg-kyb-branco p-5 text-kyb-azul shadow-kyb outline-none"
-          style={{ top: pos.top, left: pos.left, width: POPOVER_WIDTH }}
+          style={{ top: pos.top, left: pos.left, width: pos.width }}
         >
           <div className="mb-2 flex items-center justify-between gap-3">
             <p id={titleId} className="text-rotulo text-kyb-mudo">
