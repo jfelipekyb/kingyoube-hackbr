@@ -90,10 +90,10 @@ Fonte única: `docs/10-DESIGN-E-MOVIMENTO.md`. Vem antes da S3 para que as telas
 **Também (docs/11):** campos `rad_acordo` e `recebimento`, funções `supplierLight` e `customerLight`, seed dos semáforos sem mudar contagens, telas de semáforo de fornecedores e de clientes, bolinhas na Carteira.
 
 **Critérios de aceite**
-- [ ] Teste de ponta a ponta sobre o seed confere exatamente as tabelas "Por status" e "Carteira" de `docs/06`.
-- [ ] Cada regra R01–R06 tem teste unitário.
-- [ ] Recalcular não duplica itens.
-- [ ] Screenshots da Carteira (Padaria no topo), da Conciliação da Padaria e do detalhe de V2.
+- [x] Teste de ponta a ponta sobre o seed confere exatamente as tabelas "Por status" e "Carteira" de `docs/06`.
+- [x] Cada regra R01–R06 tem teste unitário.
+- [x] Recalcular não duplica itens.
+- [x] Screenshots da Carteira (Padaria no topo), da Conciliação da Padaria e do detalhe de V2.
 
 ## S4 — Agentes Tesouraria e Mensageiro (RAD, aprovação, DARF, e-mail)
 

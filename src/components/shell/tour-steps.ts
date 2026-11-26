@@ -35,3 +35,12 @@ export function writeTourSeen(storage: Pick<Storage, "setItem"> | undefined): vo
 export function availableSteps(has: (target: string) => boolean): TourStep[] {
   return TOUR_STEPS.filter((s) => has(s.target));
 }
+
+/**
+ * Mesmo alvo no menu e na tela (ex.: "carteira"): ganha o último visível na ordem do documento,
+ * que é o da tela. Assim o passo 5 aponta a tabela da Carteira quando ela existe, e o menu nas demais.
+ */
+export function pickTarget<T>(elements: readonly T[], visible: (el: T) => boolean): T | null {
+  for (let i = elements.length - 1; i >= 0; i--) if (visible(elements[i])) return elements[i];
+  return null;
+}

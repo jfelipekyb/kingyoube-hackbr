@@ -26,6 +26,8 @@ export interface DemoCounterparty {
   cnpj: string;
   siteUrlPath: string | null;
   financeEmail: string | null;
+  radAgreement: "aceita" | "recusa" | "sem_resposta";
+  radAgreementNote: string | null;
 }
 
 export interface DemoInvoice {
@@ -41,6 +43,9 @@ export interface DemoInvoice {
   period: string; // MM/AAAA
   totalCents: bigint;
   cbsCents: bigint;
+  /** Só vendas (docs/11). */
+  receipt: "recebido" | "a_receber" | "vencido" | null;
+  titleDueDate: string | null;
 }
 
 export interface DebitRecord {
@@ -146,6 +151,8 @@ const GENERIC_COUNTERPARTIES = [
 ];
 
 export const MOINHO_SLUG = "moinho-estrela";
+/** Prazo dos títulos de venda da demo (docs/11). */
+export const TITLE_TERM_DAYS = 30;
 export const FORNO_FORTE_SLUG = "forno-forte";
 
 function fictitious(name: string): string {
@@ -192,6 +199,8 @@ export function buildDemoData(demoToday: string): DemoData {
       cnpj: newCnpj(),
       siteUrlPath: `/demo/fornecedores/${MOINHO_SLUG}`,
       financeEmail: null, // o Vigia encontra (S5)
+      radAgreement: "sem_resposta",
+      radAgreementNote: null,
     },
     {
       id: stableUuid(`counterparty:${FORNO_FORTE_SLUG}`),
@@ -200,6 +209,8 @@ export function buildDemoData(demoToday: string): DemoData {
       cnpj: newCnpj(),
       siteUrlPath: null,
       financeEmail: "financeiro@fornoforte.exemplo",
+      radAgreement: "recusa",
+      radAgreementNote: "respondeu a uma cobrança anterior que não aceita o desconto",
     },
     ...GENERIC_COUNTERPARTIES.map((name, i) => ({
       id: stableUuid(`counterparty:generic-${i}`),
@@ -208,6 +219,8 @@ export function buildDemoData(demoToday: string): DemoData {
       cnpj: newCnpj(),
       siteUrlPath: null,
       financeEmail: null,
+      radAgreement: "sem_resposta" as const,
+      radAgreementNote: null,
     })),
   ];
   const cpBySlug = new Map(counterparties.map((c) => [c.slug, c]));
@@ -260,6 +273,8 @@ export function buildDemoData(demoToday: string): DemoData {
       period: periodOf(issuedOn),
       totalCents: d.total ?? demoTotalFromCbs(d.cbs),
       cbsCents: d.cbs,
+      receipt: d.direction === "venda" ? "recebido" : null,
+      titleDueDate: d.direction === "venda" ? addDays(issuedOn, TITLE_TERM_DAYS) : null,
     };
   };
 
@@ -296,6 +311,7 @@ export function buildDemoData(demoToday: string): DemoData {
   });
 
   const V2 = hand({ companySlug: padaria, scenario: "V2", direction: "venda", counterpartyCnpj: cliente(1), daysAgo: 14, number: 502, cbs: 12000n });
+  V2.receipt = "a_receber"; // semáforo amarelo (docs/11): título no prazo, CBS em aberto
   debit(V2, { apurado: 13200n, saldoDevedor: 13200n });
 
   hand({ companySlug: padaria, scenario: "V3", direction: "venda", counterpartyCnpj: cliente(2), daysAgo: 2, number: 503, cbs: 4500n });
@@ -306,6 +322,8 @@ export function buildDemoData(demoToday: string): DemoData {
   debit(V5, { apurado: 7500n, saldoDevedor: 7500n });
 
   const V6 = hand({ companySlug: padaria, scenario: "V6", direction: "venda", counterpartyCnpj: cliente(5), daysAgo: 11, number: 506, cbs: 20000n });
+  V6.receipt = "vencido"; // semáforo vermelho (docs/11): título vencido, CBS em aberto
+  V6.titleDueDate = addDays(demoToday, -1);
   debit(V6, { apurado: 20000n, suspenso: 2000n, saldoDevedor: 18000n });
 
   const C1 = hand({ companySlug: padaria, scenario: "C1", direction: "compra", counterpartyCnpj: cliente(6), daysAgo: 25, number: 7701, cbs: 15000n });

@@ -4,7 +4,7 @@ import { Compass, X } from "lucide-react";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { availableSteps, readTourSeen, writeTourSeen, type TourStep } from "./tour-steps";
+import { availableSteps, pickTarget, readTourSeen, writeTourSeen, type TourStep } from "./tour-steps";
 
 type Rect = { top: number; left: number; width: number; height: number };
 type Placement = "right" | "bottom" | "left";
@@ -14,12 +14,11 @@ const POPOVER_WIDTH = 340;
 const PAD = 6;
 
 function findTarget(target: string): HTMLElement | null {
-  const list = document.querySelectorAll<HTMLElement>(`[data-tour="${target}"]`);
-  for (const el of list) {
+  const list = [...document.querySelectorAll<HTMLElement>(`[data-tour="${target}"]`)];
+  return pickTarget(list, (el) => {
     const r = el.getBoundingClientRect();
-    if (r.width > 0 && r.height > 0) return el;
-  }
-  return null;
+    return r.width > 0 && r.height > 0;
+  });
 }
 
 function safeStorage(): Storage | undefined {

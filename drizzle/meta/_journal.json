@@ -15,6 +15,20 @@
       "when": 1795631692940,
       "tag": "0001_auditoria_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795709236932,
+      "tag": "0002_explicacao_original",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795709482035,
+      "tag": "0003_semaforos",
+      "breakpoints": true
     }
   ]
 }
