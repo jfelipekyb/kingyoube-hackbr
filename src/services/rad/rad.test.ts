@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import * as s from "@/db/schema";
 import type { Db } from "@/db/types";
 import type { ReceitaAdapter } from "@/services/receita";
-import { ANALISTA, CONTADOR, invoiceOf, other, padaria, syncedDb } from "@/test/rad-fixture";
+import { ANALISTA, CONTADOR, data, invoiceOf, other, padaria, syncedDb } from "@/test/rad-fixture";
 import { approveProposal, generateDarf, prepareProposal, RAD_ERROR_MESSAGE, RadError, rejectProposal, submitProposal, updateDraft } from "./index";
 
 let db: Db;
@@ -58,9 +58,10 @@ describe("máquina de estados e travas do RAD (docs/02, docs/11)", () => {
   });
 
   it("quem envia não aprova nem recusa", async () => {
+    const inv = data.invoices.find((i) => i.companySlug === padaria.slug && i.direction === "compra" && !["C2", "C3"].includes(i.scenario ?? ""))!;
     const [row] = await db
       .insert(s.radProposals)
-      .values({ companyId: padaria.id, invoiceId: invoiceOf("C2").id, accessKey: invoiceOf("C2").accessKey, option: "PAGAMENTO_TOTAL", justification: "x", preparedBy: "agente:tesouraria", state: "recusada" })
+      .values({ companyId: padaria.id, invoiceId: inv.id, accessKey: inv.accessKey, option: "PAGAMENTO_TOTAL", justification: "x", preparedBy: "agente:tesouraria", state: "recusada" })
       .returning();
     await db.update(s.radProposals).set({ state: "rascunho" }).where(eq(s.radProposals.id, row.id));
     await submitProposal(db, ctx(row.id, CONTADOR));

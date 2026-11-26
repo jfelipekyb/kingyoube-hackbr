@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "rad_proposals_open_invoice_uq" ON "rad_proposals" USING btree ("company_id","invoice_id") WHERE "rad_proposals"."state" in ('rascunho', 'aguardando_aprovacao', 'aprovada', 'darf_gerado', 'erro_receita');

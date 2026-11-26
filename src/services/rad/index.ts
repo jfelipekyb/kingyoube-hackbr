@@ -1,6 +1,6 @@
 // Propostas de RAD (docs/02, docs/04, docs/11): a Tesouraria prepara, uma pessoa envia, o contador decide.
 // As travas ficam aqui, no servidor; a tela só reflete o que o serviço permite.
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { counterparties, invoices, radProposals, users } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { radCandidates } from "@/services/carteira/metrics";
@@ -16,7 +16,8 @@ export type RadProposal = typeof radProposals.$inferSelect;
 export type RadOption = RadProposal["option"];
 
 /** Estados que ainda ocupam a compra: não se prepara outra proposta para ela. */
-const OPEN_STATES: RadState[] = ["rascunho", "aguardando_aprovacao", "aprovada", "darf_gerado", "pago_confirmado", "erro_receita"];
+// Estados que ocupam a compra (índice único parcial rad_proposals_open_invoice_uq, migration 0005).
+const OPEN_STATES: RadState[] = ["rascunho", "aguardando_aprovacao", "aprovada", "darf_gerado", "erro_receita"];
 
 export class RadError extends Error {
   constructor(
@@ -85,12 +86,17 @@ function expectState(p: RadProposal, allowed: RadState[], message: string) {
 }
 
 /** A Tesouraria prepara o rascunho para uma candidata (docs/04). Idempotente por compra. */
-export async function prepareProposal(db: Db, input: { companyId: string; invoiceId: string; requestedBy: string }): Promise<RadProposal> {
+async function openProposalOf(db: Db, companyId: string, invoiceId: string): Promise<RadProposal | undefined> {
   const [existing] = await db
     .select()
     .from(radProposals)
-    .where(and(eq(radProposals.companyId, input.companyId), eq(radProposals.invoiceId, input.invoiceId), inArray(radProposals.state, OPEN_STATES)))
+    .where(and(eq(radProposals.companyId, companyId), eq(radProposals.invoiceId, invoiceId), inArray(radProposals.state, OPEN_STATES)))
     .orderBy(desc(radProposals.createdAt));
+  return existing;
+}
+
+export async function prepareProposal(db: Db, input: { companyId: string; invoiceId: string; requestedBy: string }): Promise<RadProposal> {
+  const existing = await openProposalOf(db, input.companyId, input.invoiceId);
   if (existing) return existing;
   const candidate = (await radCandidates(db, input.companyId)).find((c) => c.invoiceId === input.invoiceId);
   if (!candidate) throw new RadError(409, "NAO_CANDIDATA", "Esta compra não é candidata a RAD (sem crédito travado).");
@@ -104,7 +110,13 @@ export async function prepareProposal(db: Db, input: { companyId: string; invoic
       justification: DEFAULT_JUSTIFICATION,
       preparedBy: TESOURARIA,
     })
+    .onConflictDoNothing({ target: [radProposals.companyId, radProposals.invoiceId], where: sql`${radProposals.state} in (${sql.raw(OPEN_STATES.map((st) => `'${st}'`).join(", "))})` })
     .returning();
+  if (!row) {
+    const winner = await openProposalOf(db, input.companyId, input.invoiceId);
+    if (!winner) throw new RadError(409, "ESTADO_INVALIDO", "A proposta mudou de estado; recarregue a tela.");
+    return winner;
+  }
   await recordAgentEvent(db, {
     agent: "tesouraria",
     action: "preparou_rad",
