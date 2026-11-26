@@ -78,6 +78,7 @@ export async function itemDetail(db: Db, id: string) {
           apuradoCents: r.apuradoCents,
           fields: [
             ["Apropriado", r.apropriadoCents],
+            ["Utilizado", r.utilizadoCents],
             ["A apropriar", r.aApropriarCents],
             ["Suspenso", r.suspensoCents],
             ["Inapropriável", r.inapropriavelCents],

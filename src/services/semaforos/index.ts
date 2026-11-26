@@ -9,15 +9,22 @@ export type Light = "verde" | "amarelo" | "vermelho";
 export type RadAgreement = "aceita" | "recusa" | "sem_resposta";
 export type Receipt = "recebido" | "a_receber" | "vencido";
 
-export const LIGHT_LABEL: Record<Light, string> = { verde: "Verde", amarelo: "Amarelo", vermelho: "Vermelho" };
+/** Sem dado da Receita ainda: selo neutro, fora da contagem por cor (nunca verde por omissão). */
+export type RowLight = Light | "aguardando";
+export type LightCounts = Record<Light, number> & { aguardando: number };
 
-export const SUPPLIER_RECOMMENDATION: Record<Light, string> = {
+export const LIGHT_LABEL: Record<RowLight, string> = { verde: "Verde", amarelo: "Amarelo", vermelho: "Vermelho", aguardando: "Aguardando sincronização" };
+const PENDING_RECOMMENDATION = "Sincronizar com a Receita para classificar";
+
+export const SUPPLIER_RECOMMENDATION: Record<RowLight, string> = {
+  aguardando: PENDING_RECOMMENDATION,
   verde: "Nenhuma ação",
   amarelo: "Recolher via RAD (a Tesouraria prepara; o contador aprova) e cobrar o fornecedor",
   vermelho: "Não pagar a parte da CBS até regularizar, negociar ou trocar de fornecedor; RAD só com decisão expressa do contador, com aviso de disputa",
 };
 
-export const CUSTOMER_RECOMMENDATION: Record<Light, string> = {
+export const CUSTOMER_RECOMMENDATION: Record<RowLight, string> = {
+  aguardando: PENDING_RECOMMENDATION,
   verde: "Nenhuma ação",
   amarelo: "Cobrar o cliente antes do vencimento da CBS",
   vermelho: "Recolher a CBS para não gerar multa e cobrar o cliente; avaliar suspender novas vendas a prazo",
@@ -28,17 +35,19 @@ export interface SupplierPurchase {
   confirmedRadCents: bigint;
 }
 
-/** Verde: todo crédito apropriado ou regularizado por RAD; amarelo: não recolheu e aceita/sem resposta; vermelho: não recolheu e recusou. */
-export function supplierLight(input: { radAgreement: RadAgreement; purchases: SupplierPurchase[] }): { light: Light; regularizedByRad: boolean } {
+/** Sem compra com dado da Receita: aguardando. Verde: todo crédito apropriado ou regularizado por RAD; amarelo: não recolheu e aceita/sem resposta; vermelho: não recolheu e recusou. */
+export function supplierLight(input: { radAgreement: RadAgreement; purchases: SupplierPurchase[] }): { light: RowLight; regularizedByRad: boolean } {
+  if (input.purchases.length === 0) return { light: "aguardando", regularizedByRad: false };
   const regularizedByRad = input.purchases.some((p) => p.confirmedRadCents > 0n);
   const notCollected = input.purchases.some((p) => p.aApropriarCents > p.confirmedRadCents);
   if (!notCollected) return { light: "verde", regularizedByRad };
   return { light: input.radAgreement === "recusa" ? "vermelho" : "amarelo", regularizedByRad };
 }
 
-/** Verde: recebido ou CBS sem saldo devedor; amarelo: a receber com CBS em aberto; vermelho: vencido com CBS em aberto. */
-export function customerLight(input: { receipt: Receipt | null; saldoDevedorCents: bigint | null }): Light {
-  const open = input.saldoDevedorCents === null || input.saldoDevedorCents > 0n;
+/** Sem débito da Receita: aguardando. Verde: recebido ou CBS sem saldo devedor; amarelo: a receber com CBS em aberto; vermelho: vencido com CBS em aberto. */
+export function customerLight(input: { receipt: Receipt | null; saldoDevedorCents: bigint | null }): RowLight {
+  if (input.saldoDevedorCents === null) return "aguardando";
+  const open = input.saldoDevedorCents > 0n;
   if (!open || input.receipt === null || input.receipt === "recebido") return "verde";
   return input.receipt === "vencido" ? "vermelho" : "amarelo";
 }
@@ -51,7 +60,7 @@ export interface SupplierRow {
   radAgreement: RadAgreement;
   purchases: number;
   lockedCents: bigint;
-  light: Light;
+  light: RowLight;
   regularizedByRad: boolean;
   recommendation: string;
 }
@@ -123,7 +132,7 @@ export interface CustomerRow {
   receipt: Receipt | null;
   titleDueDate: string | null;
   saldoDevedorCents: bigint | null;
-  light: Light;
+  light: RowLight;
   recommendation: string;
 }
 
@@ -173,20 +182,21 @@ export async function customerLights(db: Db, companyId: string): Promise<Custome
     .sort(byLight);
 }
 
-const ORDER: Record<Light, number> = { vermelho: 0, amarelo: 1, verde: 2 };
-function byLight<T extends { light: Light }>(a: T, b: T) {
+const ORDER: Record<RowLight, number> = { vermelho: 0, amarelo: 1, verde: 2, aguardando: 3 };
+function byLight<T extends { light: RowLight }>(a: T, b: T) {
   return ORDER[a.light] - ORDER[b.light];
 }
 
-export function countByLight(rows: { light: Light }[]): Record<Light, number> {
-  const out: Record<Light, number> = { vermelho: 0, amarelo: 0, verde: 0 };
+/** Contagem por cor só com o que tem dado da Receita; o resto vai em `aguardando`. */
+export function countByLight(rows: { light: RowLight }[]): LightCounts {
+  const out: LightCounts = { vermelho: 0, amarelo: 0, verde: 0, aguardando: 0 };
   for (const r of rows) out[r.light]++;
   return out;
 }
 
 /** Contagem de amarelos e vermelhos por cliente, para as bolinhas da Carteira. */
 export async function portfolioLights(db: Db, companyIds: string[]) {
-  const out = new Map<string, { suppliers: Record<Light, number>; customers: Record<Light, number> }>();
+  const out = new Map<string, { suppliers: LightCounts; customers: LightCounts }>();
   for (const id of companyIds) {
     out.set(id, { suppliers: countByLight(await supplierLights(db, id)), customers: countByLight(await customerLights(db, id)) });
   }

@@ -49,11 +49,12 @@ export function templateExplanation(f: ExplanationFacts): string {
   }
 }
 
-/** Números do texto (inclui datas e valores); a reescrita precisa ter exatamente os mesmos. */
+/** Números do texto na ordem em que aparecem, com sinal (inclui datas e valores; "-R$ 12,00" vira "-12,00"). */
 export function numbersIn(text: string): string[] {
-  return (text.match(/\d+(?:[.,/]\d+)*/g) ?? []).sort();
+  return [...text.matchAll(/(-\s*)?(?:R\$\s*)?(-\s*)?(\d+(?:[.,/]\d+)*)/g)].map((m) => `${m[1] || m[2] ? "-" : ""}${m[3]}`);
 }
 
+/** A reescrita só vale com exatamente os mesmos números, na mesma ordem e com o mesmo sinal. */
 export function sameNumbers(original: string, rewritten: string): boolean {
   const a = numbersIn(original);
   const b = numbersIn(rewritten);
@@ -76,7 +77,7 @@ export function llmRewriter(env: Env = process.env, fetchImpl: typeof fetch = fe
           model,
           max_tokens: 400,
           system:
-            "Reescreva a explicação fiscal em português do Brasil, mais clara para um contador. Não altere, não acrescente e não remova nenhum número, valor, data ou período. Responda só com o texto.",
+            "Reescreva a explicação fiscal em português do Brasil, mais clara para um contador. Não altere, não acrescente, não remova e não reordene nenhum número, valor, data ou período: eles precisam aparecer na mesma ordem e com o mesmo sinal. Responda só com o texto.",
           messages: [{ role: "user", content: text }],
         }),
         signal: AbortSignal.timeout(15_000),
