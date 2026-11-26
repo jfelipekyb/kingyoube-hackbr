@@ -47,3 +47,31 @@
 @utility num {
   font-variant-numeric: tabular-nums;
 }
+
+/* Balão do tour com o "rabinho" do símbolo da KingYouBe, apontando para o elemento destacado. */
+.kyb-balao-tour::before {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: var(--kyb-branco);
+  border: 1px solid var(--kyb-linha);
+  border-top-right-radius: 0;
+  border-bottom-left-radius: 4px;
+  clip-path: polygon(0 0, 100% 100%, 0 100%);
+}
+.kyb-balao-tour[data-placement="right"]::before {
+  left: -7px;
+  top: 22px;
+  transform: rotate(45deg);
+}
+.kyb-balao-tour[data-placement="left"]::before {
+  right: -7px;
+  top: 22px;
+  transform: rotate(-135deg);
+}
+.kyb-balao-tour[data-placement="bottom"]::before {
+  top: -7px;
+  right: 28px;
+  transform: rotate(135deg);
+}

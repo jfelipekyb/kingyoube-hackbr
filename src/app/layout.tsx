@@ -6,6 +6,7 @@ import { Logo } from "@/components/shell/logo";
 import { ModeBadge } from "@/components/shell/mode-badge";
 import { Nav } from "@/components/shell/nav";
 import { PageTransition } from "@/components/shell/page-transition";
+import { Tour } from "@/components/shell/tour";
 import { CompanySelector, RoleSelector } from "@/components/shell/selectors";
 import { getDb } from "@/db/client";
 import { demoToday } from "@/lib/clock";
@@ -70,6 +71,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
                     <span className="text-secundario text-muted-foreground">Hoje da demo: {formatDateBR(demoToday())}</span>
                   ) : null}
                   <ModeBadge mode={mode} />
+                  <Tour />
                 </div>
               </div>
             </header>
