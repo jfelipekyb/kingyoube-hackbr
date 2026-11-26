@@ -166,7 +166,7 @@ export default async function RadProposalPage({ params }: { params: Promise<{ id
                     <MessageCircle aria-hidden className="size-4 text-kyb-azul" strokeWidth={1.75} /> WhatsApp
                     <MessageStatus status={whatsapp.lastStatus} />
                   </p>
-                  <div className="rounded-kyb-botao border border-kyb-linha bg-kyb-canvas-2 p-3" aria-label="Prévia da conversa no WhatsApp">
+                  <div className="rounded-kyb-botao border border-kyb-linha bg-kyb-canvas p-3" aria-label="Prévia da conversa no WhatsApp">
                     <p className="mb-2 text-xs text-kyb-mudo">{whatsapp.toLabel}</p>
                     <div className="ml-auto max-w-md rounded-kyb-botao bg-kyb-branco p-3 text-sm whitespace-pre-line shadow-sm">{whatsapp.body}</div>
                     <p className="mt-1 text-right text-xs text-kyb-mudo">{dateTime.format(whatsapp.createdAt)}</p>
