@@ -43,7 +43,6 @@ const RESET_ORDER = [
   s.companies,
   s.users,
   s.effortStandards,
-  s.docWatch,
 ] as const;
 
 export async function seedDemo(db: Db, options: SeedOptions): Promise<SeedCounts> {
@@ -89,9 +88,11 @@ export async function seedDemo(db: Db, options: SeedOptions): Promise<SeedCounts
     }));
     for (let i = 0; i < rows.length; i += 200) await tx.insert(s.invoices).values(rows.slice(i, i + 200));
     await tx.insert(s.effortStandards).values(EFFORT_STANDARDS.map((e) => ({ ...e, source: "premissa", updatedBy: "seed" })));
-    await tx.insert(s.docWatch).values(
-      WATCHED_PAGES.map((p) => ({ url: `${RECEITA_DOCS_BASE}${p.page}`, title: p.title, lastVersion: p.version })),
-    );
+    // O Radar não é dado de demonstração: o reset diário preserva versões, diffs e alertas já lidos.
+    await tx
+      .insert(s.docWatch)
+      .values(WATCHED_PAGES.map((p) => ({ url: `${RECEITA_DOCS_BASE}${p.page}`, title: p.title, lastVersion: p.version })))
+      .onConflictDoNothing({ target: s.docWatch.url });
   });
 
   const counts = await countDemo(db);
