@@ -107,7 +107,7 @@ export async function seedDemo(db: Db, options: SeedOptions): Promise<SeedCounts
 }
 
 export async function countDemo(db: Db): Promise<SeedCounts> {
-  const n = async (table: (typeof RESET_ORDER)[number]) => {
+  const n = async (table: (typeof RESET_ORDER)[number] | typeof s.docWatch) => {
     const [row] = await db.select({ n: count() }).from(table);
     return Number(row.n);
   };
