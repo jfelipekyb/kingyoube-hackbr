@@ -29,7 +29,19 @@ export async function confirmRadPayments(deps: { db: Db; env?: Record<string, st
     .from(rfbPayments)
     .where(and(eq(rfbPayments.type, RAD_TYPE), inArray(rfbPayments.accessKey, open.map((p) => p.accessKey))))
     .groupBy(rfbPayments.companyId, rfbPayments.accessKey);
-  const paidByKey = new Map(paid.map((p) => [`${p.companyId}|${p.accessKey}`, BigInt(p.cents)]));
+  // RAD parcial já confirmado da mesma nota: o recolhimento dele não conta para a guia do saldo.
+  const earlier = await db
+    .select({ companyId: radProposals.companyId, accessKey: radProposals.accessKey, cents: sql<string>`coalesce(sum(${radProposals.paidPrincipalCents}), 0)::text` })
+    .from(radProposals)
+    .where(and(eq(radProposals.state, "pago_confirmado"), inArray(radProposals.accessKey, open.map((p) => p.accessKey))))
+    .groupBy(radProposals.companyId, radProposals.accessKey);
+  const earlierByKey = new Map(earlier.map((e) => [`${e.companyId}|${e.accessKey}`, BigInt(e.cents)]));
+  const paidByKey = new Map<string, bigint>();
+  for (const p of paid) {
+    const key = `${p.companyId}|${p.accessKey}`;
+    const own = BigInt(p.cents) - (earlierByKey.get(key) ?? 0n);
+    if (own > 0n) paidByKey.set(key, own);
+  }
   const pending = await db
     .selectDistinct({ companyId: rfbRequests.companyId })
     .from(rfbRequests)
