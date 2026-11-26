@@ -21,7 +21,10 @@ export async function pendingDecisions(db: Db): Promise<Decision[]> {
   const names = new Map((await db.select({ id: companies.id, name: companies.name }).from(companies)).map((c) => [c.id, shortName(c.name)]));
   const out: Decision[] = [];
   // Compra com RAD recusada já teve a decisão do contador: a Tesouraria não refaz e a Sala não pede de novo.
-  const refused = new Set((await db.select({ invoiceId: radProposals.invoiceId }).from(radProposals).where(eq(radProposals.state, "recusada"))).map((p) => p.invoiceId));
+  // Se o contador preparar outra proposta depois da recusa, ela volta a esperar decisão.
+  const proposals = await db.select({ invoiceId: radProposals.invoiceId, state: radProposals.state }).from(radProposals);
+  const reopened = new Set(proposals.filter((p) => p.state !== "recusada").map((p) => p.invoiceId));
+  const refused = new Set(proposals.filter((p) => p.state === "recusada" && !reopened.has(p.invoiceId)).map((p) => p.invoiceId));
   for (const c of (await radCandidates(db)).filter((x) => !x.hasDecision && !refused.has(x.invoiceId))) {
     out.push({ kind: "rad", title: `Guia de recolhimento (RAD) — ${names.get(c.companyId) ?? "cliente"}`, detail: `Crédito travado de ${formatBRL(c.lockedCents)}. Só sai com a sua aprovação.`, href: `/rad?cliente=${c.companyId}` });
   }
