@@ -2,7 +2,7 @@
 
 import { CircleAlert, CloudDownload, FileSearch, Inbox, Mail, MessageCircle, Radar, Receipt, Scale, ShieldCheck, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { AgentStatus, type AgentState } from "@/components/ui/agent-status";
 import { Button } from "@/components/ui/button";
 import { CountUp } from "@/components/ui/count-up";
@@ -52,14 +52,26 @@ export function SalaDaEquipe({ agents, initial }: { agents: AgentCard[]; initial
   const [error, setError] = useState<string | null>(null);
   const [current, setCurrent] = useState<string | null>(null);
 
-  const refresh = useCallback(async (runId: string) => setSnap(await call<RunSnapshot>(`/api/equipe/run/${runId}`, "GET")), []);
+  const seq = useRef({ sent: 0, applied: 0 });
+  // Polling e chamadas se cruzam: só vale a resposta mais nova.
+  const refresh = useCallback(async (runId: string) => {
+    const n = ++seq.current.sent;
+    const next = await call<RunSnapshot>(`/api/equipe/run/${runId}`, "GET");
+    if (n > seq.current.applied) {
+      seq.current.applied = n;
+      setSnap(next);
+    }
+  }, []);
 
   const run = useCallback(async () => {
+    let poll: ReturnType<typeof setInterval> | undefined;
     setRunning(true);
     setError(null);
     try {
       const { runId, agents: order } = await call<{ runId: string; agents: string[] }>("/api/equipe/run", "POST");
       await refresh(runId);
+      // docs/09: a tela acompanha pelo GET a cada 1 s, também enquanto um agente demora na própria chamada.
+      poll = setInterval(() => void refresh(runId).catch(() => {}), 1_000);
       for (const agent of order) {
         setCurrent(agent);
         for (;;) {
@@ -73,6 +85,7 @@ export function SalaDaEquipe({ agents, initial }: { agents: AgentCard[]; initial
     } catch (e) {
       setError(e instanceof Error ? e.message : "Falha inesperada");
     } finally {
+      clearInterval(poll);
       setCurrent(null);
       setRunning(false);
     }
@@ -103,7 +116,8 @@ export function SalaDaEquipe({ agents, initial }: { agents: AgentCard[]; initial
         <ol className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
           {agents.map((a, i) => {
             const step = snap?.steps[a.key as keyof RunSnapshot["steps"]] ?? null;
-            const state = stateOf(step ?? undefined);
+            const stored = stateOf(step ?? undefined);
+            const state: AgentState = current === a.key && stored === "parado" ? "trabalhando" : stored;
             const isConferente = a.key === "conferente";
             return (
               <li
