@@ -14,13 +14,15 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
     "fixtures:receita": "tsx scripts/generate-fixtures.ts",
-    "vercel-build": "npm run db:migrate && next build"
+    "vercel-build": "npm run db:migrate && next build",
+    "radar:verificar": "tsx --conditions=react-server scripts/radar-real.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.4",
+    "firecrawl": "^4.54.0",
     "lucide-react": "^1.80.0",
     "motion": "^14.14.0",
     "next": "15.5.29",

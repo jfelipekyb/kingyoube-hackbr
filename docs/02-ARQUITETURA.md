@@ -80,7 +80,8 @@ Transições só pelos serviços; cada transição grava auditoria.
 | `POST /api/resend/webhook` | Eventos de e-mail (verificar assinatura Svix com o corpo bruto) |
 | `POST /api/radar/check` | Firecrawl: verifica as páginas oficiais (também por Vercel Cron diário) |
 | `POST /api/fornecedor/[id]/contato` | Firecrawl: extrai CNPJ e e-mail financeiro do site do fornecedor |
-| `POST /api/fornecedor/[id]/cobrar` | Resend: cobrança do recolhimento que faltou |
+| `POST /api/fornecedor/[id]/cobrar` | Resend: cobrança do recolhimento que faltou (`Idempotency-Key: cobranca-<invoiceId>`) e WhatsApp simulado |
+| `POST /api/fornecedor/[id]/resposta` | Só SIMULADO: resposta do fornecedor à cobrança ("Vou recolher" / "Não aceito o RAD"), atualiza `rad_acordo` (docs/11) |
 | `POST /api/equipe/run` · `POST /api/equipe/run/[runId]/[agent]` · `GET /api/equipe/run/[runId]` | Abre a rodada, executa um agente por chamada, consulta o andamento |
 | `POST /api/kim/ouvir` | Áudio → texto (ElevenLabs speech-to-text); não guarda o áudio |
 | `POST /api/kim/perguntar` | Texto → intenção → resposta a partir da base |

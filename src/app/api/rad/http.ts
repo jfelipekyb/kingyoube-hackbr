@@ -2,7 +2,19 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/db/client";
 import { actorFromRequest } from "@/lib/request-actor";
 import { RadError } from "@/services/rad";
+import { isSimulado } from "@/lib/config";
+import { clientIp, limitPerIp } from "@/services/demo";
 import { optionalCompanyId, readJson } from "../receita/http";
+
+export { requireOperator } from "../receita/http";
+
+/** Reenvio de e-mail em SIMULADO: 1 por minuto por IP (em REAL a rota já exige Bearer CRON_SECRET). */
+export async function limitEmailResend(request: Request, action: string): Promise<NextResponse | null> {
+  if (!isSimulado()) return null;
+  const retry = await limitPerIp(getDb(), { action, ip: clientIp(request.headers) });
+  if (retry === null) return null;
+  return NextResponse.json({ erro: `Aguarde ${retry} s para reenviar (1 envio por minuto).`, codigo: "LIMITE_REENVIO" }, { status: 429, headers: { "Retry-After": String(retry) } });
+}
 
 export interface RadContext {
   db: ReturnType<typeof getDb>;

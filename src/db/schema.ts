@@ -268,40 +268,51 @@ export const reconciliationItems = pgTable(
   (t) => [uniqueIndex("reconciliation_items_natural_uq").on(t.companyId, t.accessKey, t.period, t.kind)],
 );
 
-export const radProposals = pgTable("rad_proposals", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  companyId: uuid("company_id")
-    .notNull()
-    .references(() => companies.id),
-  invoiceId: uuid("invoice_id")
-    .notNull()
-    .references(() => invoices.id),
-  accessKey: varchar("access_key", { length: 44 }).notNull(),
-  option: radOption("option").notNull(),
-  partialCents: cents("partial_cents"),
-  justification: text("justification"),
-  state: radProposalState("state").notNull().default("rascunho"),
-  preparedBy: text("prepared_by").notNull(),
-  submittedBy: text("submitted_by"),
-  approvedBy: text("approved_by"),
-  decidedAt: timestamp("decided_at", { withTimezone: true }),
-  darfPix: text("darf_pix"),
-  darfBarcode: text("darf_barcode"),
-  darfPdfUrl: text("darf_pdf_url"),
-  dueDate: date("due_date"),
-  principalCents: cents("principal_cents"),
-  totalCents: cents("total_cents"),
-  rfbReturnCode: text("rfb_return_code"),
-  rfbMessage: text("rfb_message"),
-  awareOfRefusal: boolean("aware_of_refusal").notNull().default(false),
-  rejectionReason: text("rejection_reason"),
-  submittedAt: timestamp("submitted_at", { withTimezone: true }),
-  darfGeneratedAt: timestamp("darf_generated_at", { withTimezone: true }),
-  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
-  paidPrincipalCents: cents("paid_principal_cents"),
-  divergenceRule: varchar("divergence_rule", { length: 3 }),
-  createdAt: createdAt(),
-});
+export const radProposals = pgTable(
+  "rad_proposals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => invoices.id),
+    accessKey: varchar("access_key", { length: 44 }).notNull(),
+    option: radOption("option").notNull(),
+    partialCents: cents("partial_cents"),
+    justification: text("justification"),
+    state: radProposalState("state").notNull().default("rascunho"),
+    preparedBy: text("prepared_by").notNull(),
+    submittedBy: text("submitted_by"),
+    approvedBy: text("approved_by"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    darfPix: text("darf_pix"),
+    darfBarcode: text("darf_barcode"),
+    darfPdfUrl: text("darf_pdf_url"),
+    dueDate: date("due_date"),
+    principalCents: cents("principal_cents"),
+    totalCents: cents("total_cents"),
+    rfbReturnCode: text("rfb_return_code"),
+    rfbMessage: text("rfb_message"),
+    awareOfRefusal: boolean("aware_of_refusal").notNull().default(false),
+    rejectionReason: text("rejection_reason"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    darfGeneratedAt: timestamp("darf_generated_at", { withTimezone: true }),
+    // Marca "gerando": reservada antes de chamar a Receita, para dois cliques não gerarem dois DARFs.
+    darfRequestedAt: timestamp("darf_requested_at", { withTimezone: true }),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    paidPrincipalCents: cents("paid_principal_cents"),
+    divergenceRule: varchar("divergence_rule", { length: 3 }),
+    createdAt: createdAt(),
+  },
+  // Uma proposta aberta por compra: preparar duas vezes devolve a mesma. pago_confirmado não conta (o saldo ainda travado vira nova proposta).
+  (t) => [
+    uniqueIndex("rad_proposals_open_invoice_uq")
+      .on(t.companyId, t.invoiceId)
+      .where(sql`${t.state} in ('rascunho', 'aguardando_aprovacao', 'aprovada', 'darf_gerado', 'erro_receita')`),
+  ],
+);
 
 export const outboundMessages = pgTable("outbound_messages", {
   id: uuid("id").primaryKey().defaultRandom(),

@@ -43,9 +43,14 @@ describe("confirmação do RAD pelos recolhimentos (docs/04)", () => {
     expect(audit.some((a) => a.result === "divergente_R07")).toBe(true);
   });
 
-  it("vencimento passado sem recolhimento → vencida", async () => {
+  it("vencimento passado sem recolhimento → vencida só depois que todos os recolhimentos da rodada foram processados", async () => {
     const id = await darf("C3", true);
     await db.update(s.radProposals).set({ dueDate: "2026-11-19" }).where(eq(s.radProposals.id, id));
+    // Rodada ainda com recolhimentos em processamento: o recolhimento pode estar no arquivo que falta.
+    const [req] = await db.insert(s.rfbRequests).values({ companyId: padaria.id, service: "recolhimentos", state: "em_processamento", mode: "SIMULADO" }).returning();
+    expect(await confirmRadPayments({ db, env })).toMatchObject({ expired: 0 });
+    expect((await getProposal(db, id, padaria.id)).state).toBe("darf_gerado");
+    await db.update(s.rfbRequests).set({ state: "normalizada" }).where(eq(s.rfbRequests.id, req.id));
     expect(await confirmRadPayments({ db, env })).toMatchObject({ expired: 1 });
     expect((await getProposal(db, id, padaria.id)).state).toBe("vencida");
   });

@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getDb } from "@/db/client";
 import { resolveCompany } from "@/lib/company-param";
+import { supplierContactInfo } from "@/services/fornecedor";
 import { countByLight, supplierLights, type Light } from "@/services/semaforos";
 
 export const dynamic = "force-dynamic";
@@ -17,13 +18,13 @@ export default async function FornecedoresPage({ searchParams }: { searchParams:
   const { company, metrics } = await resolveCompany(db, sp.cliente);
   if (!company) return <EmptyState message="Nenhum cliente na carteira." />;
   const color = LIGHTS.includes(sp.cor as Light) ? (sp.cor as Light) : null;
-  const rows = await supplierLights(db, company.id);
+  const [rows, contacts] = await Promise.all([supplierLights(db, company.id), supplierContactInfo(db, company.id)]);
   const href = (cliente: string, c: Light | null) => `/fornecedores?cliente=${cliente}${c ? `&cor=${c}` : ""}`;
   return (
     <>
       <PageHeader
         title="Fornecedores"
-        description="Semáforo de contas a pagar: quem recolheu a CBS, quem não recolheu e aceita o RAD, e quem recusou. A cor vem da regra; o contador decide."
+        description="Semáforo de contas a pagar: quem recolheu a CBS, quem não recolheu e aceita o RAD, e quem recusou. O Vigia acha o contato no site do fornecedor e o Mensageiro cobra por e-mail e WhatsApp simulado. A cor vem da regra; o contador decide."
       />
       <form className="mb-4 flex flex-wrap items-end gap-3" action="/fornecedores">
         <label className="flex flex-col gap-1 text-sm">
@@ -45,7 +46,7 @@ export default async function FornecedoresPage({ searchParams }: { searchParams:
       </form>
       <LightFilter counts={countByLight(rows)} active={color} hrefFor={(c) => href(company.id, c)} />
       <Card className="py-0" data-tour="semaforo-fornecedores">
-        <SupplierTable rows={color ? rows.filter((r) => r.light === color) : rows} />
+        <SupplierTable rows={color ? rows.filter((r) => r.light === color) : rows} contacts={contacts} />
       </Card>
     </>
   );

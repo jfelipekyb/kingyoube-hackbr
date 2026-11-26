@@ -179,3 +179,40 @@ export async function recordEmailEvent(db: Db, rawBody: string) {
   await recordAudit(db, { actor: "sistema:resend", action: "resend.webhook", entity: "outbound_message", entityId: msg?.id ?? null, result: type });
   return { type, matched: Boolean(msg) };
 }
+
+/** E-mail genérico do Mensageiro/Vigia: Resend com Idempotency-Key, ou simulado sem RESEND_API_KEY. Reenviar a mesma chave não duplica. */
+export async function sendEmailOnce(
+  deps: MensageiroDeps,
+  input: { kind: OutboundMessage["kind"]; refId: string; key: string; to: string | undefined; fallbackLabel: string; subject: string; lines: string[] },
+): Promise<{ row: OutboundMessage; created: boolean }> {
+  const { db } = deps;
+  const env = deps.env ?? process.env;
+  const [existing] = await db.select().from(outboundMessages).where(eq(outboundMessages.idempotencyKey, input.key));
+  if (existing && existing.lastStatus !== "erro") return { row: existing, created: false };
+  const to = input.to?.trim();
+  const apiKey = env.RESEND_API_KEY?.trim();
+  const toLabel = maskEmail(to) ?? input.fallbackLabel;
+  let resendId: string | null = null;
+  let status = SIMULATED_STATUS;
+  if (apiKey) {
+    const from = env.RESEND_FROM?.trim();
+    if (!to || !from) throw new Error("Envio real exige o destinatário e RESEND_FROM");
+    const res = await (deps.fetch ?? fetch)(`${RESEND_API}/emails`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "Idempotency-Key": input.key },
+      body: JSON.stringify({ from, to: [to], subject: input.subject, text: input.lines.join("\n"), html: input.lines.map((l) => `<p>${escapeHtml(l)}</p>`).join("") }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { id?: string };
+    if (res.ok && body.id) {
+      resendId = body.id;
+      status = "enviado";
+    } else {
+      status = "erro";
+    }
+  }
+  const values = { channel: "email" as const, kind: input.kind, refId: input.refId, toLabel, resendId, idempotencyKey: input.key, lastStatus: status, body: input.subject };
+  const [row] = existing
+    ? await db.update(outboundMessages).set(values).where(eq(outboundMessages.id, existing.id)).returning()
+    : await db.insert(outboundMessages).values(values).onConflictDoUpdate({ target: outboundMessages.idempotencyKey, set: values }).returning();
+  return { row, created: true };
+}

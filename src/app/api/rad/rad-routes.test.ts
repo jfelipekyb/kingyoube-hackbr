@@ -13,6 +13,7 @@ const { POST: submit } = await import("./proposals/[id]/submit/route");
 const { POST: approve } = await import("./proposals/[id]/approve/route");
 const { POST: generate } = await import("./proposals/[id]/generate-darf/route");
 const { POST: draft } = await import("./proposals/[id]/draft/route");
+const { POST: resend } = await import("./proposals/[id]/send/route");
 
 beforeAll(async () => {
   ({ db, close } = await syncedDb());
@@ -66,5 +67,26 @@ describe("rotas de RAD", () => {
 
   it("sem companyId, 400", async () => {
     expect((await prepare(post({ invoiceId: invoiceOf("C2").id }, "analista"))).status).toBe(400);
+  });
+
+  it("0f: em REAL, gerar DARF e reenviar e-mail sem Bearer CRON_SECRET dão 401; em SIMULADO, 1 reenvio por minuto por IP", async () => {
+    const [withDarf] = await db.select().from(s.radProposals).where(eq(s.radProposals.state, "darf_gerado"));
+    expect(withDarf).toBeDefined();
+    const fromIp = (ip: string, extra: Record<string, string> = {}) =>
+      new Request("http://localhost/x", { method: "POST", body: JSON.stringify({ companyId: withDarf.companyId }), headers: { cookie: "demo_papel=contador", "x-forwarded-for": ip, ...extra } });
+    vi.stubEnv("RECEITA_MODE", "REAL");
+    vi.stubEnv("CRON_SECRET", "segredo-de-teste");
+    try {
+      expect((await generate(fromIp("10.0.0.1"), params(withDarf.id))).status).toBe(401);
+      expect((await resend(fromIp("10.0.0.1"), params(withDarf.id))).status).toBe(401);
+      expect((await resend(fromIp("10.0.0.1", { authorization: "Bearer errado" }), params(withDarf.id))).status).toBe(401);
+    } finally {
+      vi.stubEnv("RECEITA_MODE", "SIMULADO");
+    }
+    expect((await resend(fromIp("10.0.0.2"), params(withDarf.id))).status).toBe(200);
+    const limited = await resend(fromIp("10.0.0.2"), params(withDarf.id));
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get("Retry-After")).toBeTruthy();
+    expect((await resend(fromIp("10.0.0.3"), params(withDarf.id))).status).toBe(200);
   });
 });

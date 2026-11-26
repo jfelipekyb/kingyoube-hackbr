@@ -9,7 +9,9 @@ import { formatDateBR, brasiliaDay } from "@/lib/dates";
 import { maskEmail } from "@/lib/mask";
 import { formatBRL } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { CHARGE_STATE_LABEL, type SupplierContactInfo } from "@/services/fornecedor/labels";
 import type { CustomerRow, Light, LightCounts, SupplierRow } from "@/services/semaforos";
+import { SupplierActions } from "./supplier-actions";
 
 const shortName = (name: string | null) => (name ?? "—").replace(/\s*\(FICTÍCIA\)$/, "");
 const RAD_AGREEMENT: Record<SupplierRow["radAgreement"], string> = { aceita: "aceita o RAD", recusa: "recusou o RAD", sem_resposta: "sem resposta" };
@@ -53,7 +55,40 @@ export function LightFilter({ counts, active, hrefFor }: { counts: LightCounts; 
   );
 }
 
-export function SupplierTable({ rows }: { rows: SupplierRow[] }) {
+const CONTACT_SOURCE: Record<SupplierContactInfo["contactSource"], string> = {
+  cadastro: "fonte: cadastro",
+  firecrawl: "fonte: site do fornecedor (Firecrawl)",
+  simulado: "fonte: site fictício (fixture, simulado)",
+};
+const MESSAGE_STATUS: Record<string, string> = { simulado: "simulado", enviado: "enviado", delivered: "entregue", bounced: "devolvido", erro: "erro" };
+
+function ChargeCell({ row, info }: { row: SupplierRow; info: SupplierContactInfo | undefined }) {
+  if (!info) return <span className="text-kyb-mudo">—</span>;
+  const tone = info.state === "entregue" ? "conciliado" : info.state === "falhou" || info.state === "devolvida" ? "divergente" : info.state === "sem_contato" ? "aguardando" : "atencao";
+  return (
+    <div className="flex flex-col items-start gap-1.5" data-charge-state={info.state}>
+      <StatusBadge tone={tone}>{CHARGE_STATE_LABEL[info.state]}</StatusBadge>
+      {info.email ? (
+        <span className="text-xs text-kyb-mudo">
+          Nota {info.chargeInvoiceNumber} · e-mail {MESSAGE_STATUS[info.email.lastStatus ?? ""] ?? info.email.lastStatus} para {info.email.toLabel}
+        </span>
+      ) : null}
+      {info.whatsapp ? (
+        <span className="max-w-xs rounded-kyb-botao border border-kyb-linha bg-kyb-canvas-2 p-2 text-xs" data-whatsapp-simulado>
+          <span className="font-semibold">WhatsApp (simulado):</span> {info.whatsapp.body}
+        </span>
+      ) : null}
+      <SupplierActions
+        counterpartyId={row.counterpartyId}
+        canFindContact={Boolean(info.siteUrl)}
+        chargeInvoiceId={row.financeEmail && row.lockedCents > 0n ? info.chargeInvoiceId : null}
+        charged={Boolean(info.email)}
+      />
+    </div>
+  );
+}
+
+export function SupplierTable({ rows, contacts }: { rows: SupplierRow[]; contacts?: Map<string, SupplierContactInfo> }) {
   if (rows.length === 0) return <EmptyState message="Nenhum fornecedor nesta cor." />;
   return (
     <Table>
@@ -65,6 +100,7 @@ export function SupplierTable({ rows }: { rows: SupplierRow[] }) {
           <TableHead className="text-right">Crédito travado</TableHead>
           <TableHead>Semáforo</TableHead>
           <TableHead>Recomendação</TableHead>
+          {contacts ? <TableHead>Cobrança</TableHead> : null}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -74,7 +110,10 @@ export function SupplierTable({ rows }: { rows: SupplierRow[] }) {
               <div className="font-semibold">{shortName(r.name)}</div>
               <div className="text-xs text-kyb-mudo">{formatCnpj(r.cnpj)} · {RAD_AGREEMENT[r.radAgreement]}</div>
             </TableCell>
-            <TableCell className="text-kyb-mudo">{maskEmail(r.financeEmail) ?? "não informado"}</TableCell>
+            <TableCell className="whitespace-normal">
+              <div className="text-kyb-mudo">{maskEmail(r.financeEmail) ?? "não informado"}</div>
+              {contacts && r.financeEmail ? <div className="text-xs text-kyb-mudo">{CONTACT_SOURCE[contacts.get(r.counterpartyId)?.contactSource ?? "cadastro"]}</div> : null}
+            </TableCell>
             <TableCell className="text-right">{r.purchases}</TableCell>
             <TableCell className="text-right">{formatBRL(r.lockedCents)}</TableCell>
             <TableCell>
@@ -88,6 +127,11 @@ export function SupplierTable({ rows }: { rows: SupplierRow[] }) {
               </div>
             </TableCell>
             <TableCell className="max-w-sm whitespace-normal text-sm">{r.recommendation}</TableCell>
+            {contacts ? (
+              <TableCell className="whitespace-normal">
+                <ChargeCell row={r} info={contacts.get(r.counterpartyId)} />
+              </TableCell>
+            ) : null}
           </TableRow>
         ))}
       </TableBody>

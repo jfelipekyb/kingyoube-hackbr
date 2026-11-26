@@ -1,6 +1,6 @@
 // Confirmação do RAD (docs/04): DARF gerado não é DARF pago. Só o recolhimento sincronizado da Receita confirma.
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { radProposals, rfbPayments } from "@/db/schema";
+import { radProposals, rfbPayments, rfbRequests } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { demoToday } from "@/lib/clock";
 import { brasiliaDay } from "@/lib/dates";
@@ -8,8 +8,13 @@ import { recordAudit } from "@/services/auditoria";
 import { recordAgentEvent } from "@/services/equipe";
 
 const RAD_TYPE = 1;
+// Solicitação ainda não normalizada: o recolhimento pode estar no arquivo que falta.
+const PENDING_REQUEST_STATES = ["solicitada", "em_processamento", "concluida", "baixada"] as const;
 
-/** darf_gerado + recolhimento com a mesma chave → pago_confirmado (R07 se o valor diferir); vencimento passado sem recolhimento → vencida. */
+/**
+ * darf_gerado + recolhimento com a mesma chave → pago_confirmado (R07 se o valor diferir).
+ * Vencimento passado sem recolhimento → vencida, mas só quando todas as solicitações de recolhimentos do cliente já foram processadas.
+ */
 export async function confirmRadPayments(deps: { db: Db; env?: Record<string, string | undefined>; now?: () => Date }, companyId: string | null = null) {
   const { db } = deps;
   const env = deps.env ?? process.env;
@@ -24,7 +29,30 @@ export async function confirmRadPayments(deps: { db: Db; env?: Record<string, st
     .from(rfbPayments)
     .where(and(eq(rfbPayments.type, RAD_TYPE), inArray(rfbPayments.accessKey, open.map((p) => p.accessKey))))
     .groupBy(rfbPayments.companyId, rfbPayments.accessKey);
-  const paidByKey = new Map(paid.map((p) => [`${p.companyId}|${p.accessKey}`, BigInt(p.cents)]));
+  // RAD parcial já confirmado da mesma nota: o recolhimento dele não conta para a guia do saldo.
+  const earlier = await db
+    .select({ companyId: radProposals.companyId, accessKey: radProposals.accessKey, cents: sql<string>`coalesce(sum(${radProposals.paidPrincipalCents}), 0)::text` })
+    .from(radProposals)
+    .where(and(eq(radProposals.state, "pago_confirmado"), inArray(radProposals.accessKey, open.map((p) => p.accessKey))))
+    .groupBy(radProposals.companyId, radProposals.accessKey);
+  const earlierByKey = new Map(earlier.map((e) => [`${e.companyId}|${e.accessKey}`, BigInt(e.cents)]));
+  const paidByKey = new Map<string, bigint>();
+  for (const p of paid) {
+    const key = `${p.companyId}|${p.accessKey}`;
+    const own = BigInt(p.cents) - (earlierByKey.get(key) ?? 0n);
+    if (own > 0n) paidByKey.set(key, own);
+  }
+  const pending = await db
+    .selectDistinct({ companyId: rfbRequests.companyId })
+    .from(rfbRequests)
+    .where(
+      and(
+        eq(rfbRequests.service, "recolhimentos"),
+        inArray(rfbRequests.state, [...PENDING_REQUEST_STATES]),
+        inArray(rfbRequests.companyId, [...new Set(open.map((p) => p.companyId))]),
+      ),
+    );
+  const awaitingRecolhimentos = new Set(pending.map((r) => r.companyId));
   const at = (deps.now ?? (() => new Date()))();
   let confirmed = 0;
   let divergent = 0;
@@ -59,7 +87,7 @@ export async function confirmRadPayments(deps: { db: Db; env?: Record<string, st
         result: differs ? "divergente_R07" : "ok",
         details: { recolhidoCents: cents.toString(), darfCents: p.principalCents?.toString() ?? null },
       });
-    } else if (p.dueDate && p.dueDate < today) {
+    } else if (p.dueDate && p.dueDate < today && !awaitingRecolhimentos.has(p.companyId)) {
       const [row] = await db
         .update(radProposals)
         .set({ state: "vencida" })

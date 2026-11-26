@@ -4,7 +4,8 @@ import { companies, invoices, radProposals, reconciliationItems, rfbCredits, rfb
 import type { Db } from "@/db/types";
 
 const RAD_TYPE = 1;
-const DECIDED_STATES = ["aprovada", "darf_gerado", "pago_confirmado"] as const;
+// pago_confirmado não conta: se sobrou saldo travado (RAD parcial), ele ainda espera decisão.
+const DECIDED_STATES = ["aprovada", "darf_gerado"] as const;
 
 export interface RadCandidate {
   companyId: string;

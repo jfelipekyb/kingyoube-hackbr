@@ -1,0 +1,1 @@
+ALTER TABLE "rad_proposals" ADD COLUMN "darf_requested_at" timestamp with time zone;

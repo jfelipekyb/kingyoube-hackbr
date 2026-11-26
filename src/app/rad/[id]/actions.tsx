@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { AWARE_OF_REFUSAL_TEXT, type RadState } from "@/services/rad/labels";
+import { AWARE_OF_REFUSAL_TEXT, decisionView, type RadState } from "@/services/rad/labels";
 
 export interface ActionProposal {
   id: string;
@@ -15,6 +15,8 @@ export interface ActionProposal {
   partialCents: string | null;
   justification: string | null;
   suggestedCents: string;
+  preparedBy: string;
+  submittedBy: string | null;
 }
 
 const BRL_RE = /^\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?$|^\d+(?:,\d{1,2})?$/;
@@ -31,7 +33,8 @@ function centsToBrl(cents: string | null): string {
   return `${(c / 100n).toString()},${(c % 100n).toString().padStart(2, "0")}`;
 }
 
-export function RadActions({ p, supplierRed, role }: { p: ActionProposal; supplierRed: boolean; role: "analista" | "contador" }) {
+export function RadActions({ p, supplierRed, role, actor }: { p: ActionProposal; supplierRed: boolean; role: "analista" | "contador"; actor: string }) {
+  const view = decisionView(p, { role, actor });
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -101,14 +104,22 @@ export function RadActions({ p, supplierRed, role }: { p: ActionProposal; suppli
             <Button variant="outline" onClick={() => saveDraft(false)} disabled={busy !== null}>
               Salvar rascunho
             </Button>
-            <Button onClick={() => saveDraft(true)} disabled={busy !== null}>
-              <Send aria-hidden strokeWidth={1.75} /> Enviar ao contador
-            </Button>
+            {view.canSubmit && (
+              <Button onClick={() => saveDraft(true)} disabled={busy !== null}>
+                <Send aria-hidden strokeWidth={1.75} /> Enviar ao contador
+              </Button>
+            )}
           </div>
         </fieldset>
       )}
 
-      {p.state === "aguardando_aprovacao" && (
+      {view.blockedReason && (
+        <p className="rounded-kyb-botao border border-kyb-linha bg-kyb-canvas-2 p-3 text-sm" data-decision-blocked>
+          {view.blockedReason}
+        </p>
+      )}
+
+      {p.state === "aguardando_aprovacao" && (view.canDecide || role === "analista") && (
         <div className="space-y-3">
           {supplierRed && (
             <div role="alert" className="rounded-kyb-botao border border-kyb-erro/40 bg-kyb-erro/10 p-3 text-sm text-kyb-erro" data-tour="rad-aviso-vermelho">
