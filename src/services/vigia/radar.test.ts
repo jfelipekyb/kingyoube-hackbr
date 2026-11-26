@@ -102,3 +102,19 @@ describe("Vigia: radar da documentação da Receita (docs/05)", () => {
     expect(isAllowedUrl(`${RECEITA_DOCS_BASE}debito.html`, {})).toBe(true);
   });
 });
+
+describe("Vigia: alerta que falhou", () => {
+  it("Resend recusa → fica 'mudou'; próxima leitura sem mudança tenta de novo e marca 'alertado'", async () => {
+    const url = `${RECEITA_DOCS_BASE}debito.html`;
+    await db.update(s.docWatch).set({ lastVersion: "1.5", changeStatus: "sem_mudanca" }).where(eq(s.docWatch.url, url));
+    const resend = { ...env, RESEND_API_KEY: "re_teste", RESEND_FROM: "vigia@kingyoube.exemplo" };
+    const failing = (async () => new Response("{}", { status: 500 })) as unknown as typeof fetch;
+    await checkDocs({ db, scraper: fakeFirecrawl("changed", { "debito.html": ["1.6"] }, "+ 1.6").scraper, env: resend, sleep, fetch: failing });
+    let [row] = await db.select().from(s.docWatch).where(eq(s.docWatch.url, url));
+    expect(row).toMatchObject({ changeStatus: "mudou", lastVersion: "1.6", diffText: "+ 1.6" });
+    const ok = (async () => new Response(JSON.stringify({ id: "email_retry" }), { status: 200 })) as unknown as typeof fetch;
+    await checkDocs({ db, scraper: fakeFirecrawl("same", { "debito.html": ["1.6"] }).scraper, env: resend, sleep, fetch: ok });
+    [row] = await db.select().from(s.docWatch).where(eq(s.docWatch.url, url));
+    expect(row.changeStatus).toBe("alertado");
+  });
+});
