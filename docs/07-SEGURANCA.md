@@ -37,3 +37,4 @@ O repositório é **público**. Trate tudo como se um concorrente e um atacante 
 
 ## Antes de tornar público
 - `gitleaks` limpo; `grep -rniE "$FORBIDDEN_TERMS" --exclude-dir=node_modules --exclude-dir=.git .` sem resultado (a lista de termos proibidos fica só no segredo `FORBIDDEN_TERMS`, nunca no repositório); revisão humana do Oscar.
+- Revisão da S8 (27/11/2026): `gitleaks` 8.21.2 sem achado no histórico inteiro (`--log-opts=--all`, 116 commits) e nos 322 arquivos versionados (`git archive HEAD`; os 2 achados da pasta local `.next/`, fora do git, são chaves de pré-visualização geradas pelo build); `FORBIDDEN_TERMS` sem ocorrência na árvore, nos diffs e mensagens de todos os commits e nos nomes de branch e tag. Comandos no PR da S8. Falta a revisão humana do Oscar.
