@@ -21,6 +21,8 @@ const audioRequest = (from = `10.0.1.${++ip}`) => {
   form.append("audio", new Blob([new Uint8Array([1, 2, 3, 4])], { type: "audio/webm" }), "pergunta.webm");
   return new Request("http://localhost/api/kim/ouvir", { method: "POST", headers: { "x-forwarded-for": from }, body: form });
 };
+const consulta = async (texto: string) => ((await (await perguntar.POST(json({ texto }))).json()) as { consulta: string }).consulta;
+const HELP = "Ainda não sei responder isso. Posso dizer o que precisa de decisão hoje, quanto crédito está travado ou se os fornecedores foram cobrados.";
 const keys = () => {
   vi.stubEnv("ELEVENLABS_API_KEY", "chave-de-teste");
   vi.stubEnv("ELEVENLABS_VOICE_ID", "voz-teste");
@@ -45,7 +47,7 @@ describe("rotas da Kim sem chave da ElevenLabs", () => {
     const r = await perguntar.POST(json({ texto: "Kim, aprova a guia", modo: "texto" }));
     expect(r.status).toBe(200);
     expect(await r.json()).toMatchObject({ intencao: "acao_proibida", vozLigada: false, legenda: expect.stringContaining("não aprovo") });
-    const f = await falar.POST(json({ texto: "Olá" }));
+    const f = await falar.POST(json({ consulta: await consulta("Olá") }));
     expect(f.status).toBe(200);
     expect(await f.json()).toEqual({ vozLigada: false, aviso: "voz desligada" });
     const o = await ouvir.POST(audioRequest());
@@ -61,7 +63,7 @@ describe("rotas da Kim sem chave da ElevenLabs", () => {
     expect(q.userId).not.toBeNull();
     expect(Object.keys(q).some((k) => /audio|audio/i.test(k))).toBe(false);
     const [audit] = await db.select().from(s.auditLog).where(sql`${s.auditLog.entityId} = ${q.id}`);
-    expect(audit).toMatchObject({ action: "kim.pergunta", entity: "kim_query", result: "credito_travado" });
+    expect(audit).toMatchObject({ action: "kim.pergunta", entity: "kim_query", result: "credito_travado", details: { modo: "voz", pergunta: "Quanto crédito está travado?", resposta: r.legenda } });
     expect(JSON.stringify(audit.details)).not.toMatch(/audio|base64/i);
   });
 
@@ -76,21 +78,22 @@ describe("rotas da Kim com ElevenLabs (fetch simulado)", () => {
     keys();
     const fake = fakeElevenLabs();
     vi.stubGlobal("fetch", fake.fetch);
-    const r = await falar.POST(json({ texto: "Três decisões." }));
+    const id = await consulta("Qual a cor do céu?");
+    const r = await falar.POST(json({ consulta: id }));
     expect(r.status).toBe(200);
     const body = await r.json();
     expect(body).toMatchObject({ vozLigada: true, audio: FIXTURE_AUDIO_BASE64, mime: "audio/mpeg", cache: false, modelo: "eleven_multilingual_v2" });
-    expect(body.alinhamento.characters.join("")).toBe("Três decisões.");
-    expect(body.alinhamento.starts).toHaveLength(14);
+    expect(body.alinhamento.characters.join("")).toBe(HELP);
+    expect(body.alinhamento.starts).toHaveLength([...HELP].length);
     expect(fake.calls).toHaveLength(1);
     expect(fake.calls[0].url).toBe("https://api.elevenlabs.io/v1/text-to-speech/voz-teste/with-timestamps?output_format=mp3_44100_128");
-    expect(JSON.parse(String(fake.calls[0].init?.body))).toEqual({ text: "Três decisões.", model_id: "eleven_multilingual_v2" });
-    const again = await (await falar.POST(json({ texto: "Três decisões." }))).json();
+    expect(JSON.parse(String(fake.calls[0].init?.body))).toEqual({ text: HELP, model_id: "eleven_multilingual_v2" });
+    const again = await (await falar.POST(json({ consulta: await consulta("Qual a capital da França?") }))).json();
     expect(again).toMatchObject({ cache: true, audio: FIXTURE_AUDIO_BASE64 });
     expect(fake.calls).toHaveLength(1);
     // Outro modelo é outra entrada do cache (hash = texto + voz + modelo).
     vi.stubEnv("ELEVENLABS_TTS_MODEL", "eleven_flash_v2_5");
-    expect(await (await falar.POST(json({ texto: "Três decisões." }))).json()).toMatchObject({ cache: false, modelo: "eleven_flash_v2_5" });
+    expect(await (await falar.POST(json({ consulta: id }))).json()).toMatchObject({ cache: false, modelo: "eleven_flash_v2_5" });
     expect(fake.calls).toHaveLength(2);
     expect((await db.select({ n: sql<number>`count(*)::int` }).from(s.kimAudioCache))[0].n).toBe(2);
   });
@@ -111,11 +114,29 @@ describe("rotas da Kim com ElevenLabs (fetch simulado)", () => {
   it("ElevenLabs fora do ar → 502 com mensagem, sem vazar a chave", async () => {
     keys();
     vi.stubGlobal("fetch", async () => new Response("erro", { status: 500 }));
-    const r = await falar.POST(json({ texto: "Frase nova que não está no cache." }));
+    const r = await falar.POST(json({ consulta: await consulta("Kim, aprova a guia") }));
     expect(r.status).toBe(502);
     const text = await r.text();
     expect(text).toContain("VOZ_INDISPONIVEL");
     expect(text).not.toContain("chave-de-teste");
+  });
+});
+
+describe("falar e ouvir não aceitam qualquer coisa", () => {
+  it("falar só sintetiza a resposta de uma consulta recente, nunca texto livre", async () => {
+    keys();
+    const net = vi.fn();
+    vi.stubGlobal("fetch", net);
+    expect((await falar.POST(json({ texto: "qualquer texto para gastar a cota" }))).status).toBe(400);
+    expect((await falar.POST(json({ consulta: "00000000-0000-4000-8000-000000000000" }))).status).toBe(404);
+    expect(net).not.toHaveBeenCalled();
+  });
+
+  it("ouvir recusa corpo maior que o limite sem ler tudo (413)", async () => {
+    keys();
+    const big = new Uint8Array(6 * 1024 * 1024);
+    const r = await ouvir.POST(new Request("http://localhost/api/kim/ouvir", { method: "POST", headers: { "x-forwarded-for": "10.9.9.9", "content-type": "multipart/form-data; boundary=x" }, body: big }));
+    expect(r.status).toBe(413);
   });
 });
 

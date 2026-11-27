@@ -24,5 +24,5 @@ export async function POST(request: Request) {
   if (!texto || texto.length > MAX_QUESTION) return NextResponse.json({ erro: `pergunta de 1 a ${MAX_QUESTION} caracteres` }, { status: 400 });
   const mode = KIM_INPUT_MODES.includes(body.modo as KimInputMode) ? (body.modo as KimInputMode) : "texto";
   const a = await askKim(getDb(), { text: texto, mode, actor: actorFromRequest(request) });
-  return NextResponse.json({ intencao: a.intent, legenda: a.legenda, fala: a.fala, vozLigada: voiceConfig() !== null });
+  return NextResponse.json({ consulta: a.queryId, intencao: a.intent, legenda: a.legenda, fala: a.fala, vozLigada: voiceConfig() !== null });
 }

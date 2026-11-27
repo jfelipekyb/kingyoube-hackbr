@@ -14,6 +14,6 @@ export async function askKim(db: Db, input: { text: string; mode: KimInputMode; 
     .insert(kimQueries)
     .values({ userId, inputMode: input.mode, recognizedText: input.text, intent: answer.intent, answerText: answer.legenda })
     .returning({ id: kimQueries.id });
-  await recordAudit(db, { actor: input.actor, action: "kim.pergunta", entity: "kim_query", entityId: row.id, result: answer.intent, details: { modo: input.mode } });
+  await recordAudit(db, { actor: input.actor, action: "kim.pergunta", entity: "kim_query", entityId: row.id, result: answer.intent, details: { modo: input.mode, pergunta: input.text.slice(0, 500), resposta: answer.legenda } });
   return { ...answer, queryId: row.id };
 }
