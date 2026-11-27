@@ -54,6 +54,8 @@ O que já funciona:
 - **Apuração (S2):** consulta assíncrona de débitos, créditos, pagamentos e recolhimentos da CBS (solicitar, acompanhar, baixar, normalizar), com webhook e cron protegidos.
 - **Conciliação, Analista e Carteira (S3):** nota contra Receita pelas regras determinísticas de `docs/04`, explicação de cada diferença em português e semáforos de clientes e fornecedores.
 - **Tesouraria e Mensageiro (S4):** proposta de RAD preparada pelo agente, enviada pelo Analista e decidida pelo contador (trava no servidor), DARF gerado, e-mail ao financeiro (Resend ou simulado) e WhatsApp simulado, e confirmação do pagamento pelos recolhimentos.
+- **Vigia, contato e cobrança (S5):** o Vigia lê as 9 páginas oficiais da Receita (Firecrawl, com diff e alerta de versão) e acha o contato financeiro do fornecedor no site dele; o Mensageiro cobra o fornecedor por e-mail (idempotente) e WhatsApp simulado, e a resposta atualiza o semáforo.
+- **Sala da Equipe, Conferente, horas e organograma (S6):** página inicial com a rodada da equipe, um agente por chamada e idempotente (Captura, Apuração, Conciliador, Conferente, Analista, Tesouraria, Vigia, Mensageiro e Kim), cada um com anel "trabalhando", check e resumo, e no fim o que precisa da decisão do contador; o Conferente refaz a conciliação do zero, com código próprio, e marca `revisado_ok` ou `revisado_divergente` sem corrigir nada; tela Equipe com organograma (Contador → Kim → 8 agentes), horas devolvidas (Σ contagem × minutos ÷ 60), projeção para 200 clientes ("projeção, não medição") e premissas que só o contador muda, com auditoria.
 
 O que vem a seguir está em [`docs/08-BACKLOG.md`](docs/08-BACKLOG.md); o que ainda depende de decisão está em [`docs/PENDENCIAS.md`](docs/PENDENCIAS.md).
 

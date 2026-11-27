@@ -1,5 +1,5 @@
 // Passos do tour guiado (docs/10, seção 5). Só aparecem os passos cujo elemento existe na tela
-// (`data-tour="..."`); os demais entram sozinhos quando as telas das próximas sessões criarem o elemento.
+// (`data-tour="..."`). Passos 2 e 3 ficam na Sala da Equipe (página inicial).
 export type TourStep = { target: string; text: string };
 
 export const TOUR_STEPS: readonly TourStep[] = [

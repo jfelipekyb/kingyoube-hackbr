@@ -84,6 +84,7 @@ export const agentEventStatus = pgEnum("agent_event_status", [
   "aguardando_humano",
   "erro",
 ]);
+export const reviewStatus = pgEnum("review_status", ["revisado_ok", "revisado_divergente"]);
 export const kimInputMode = pgEnum("kim_input_mode", ["voz", "botao", "texto"]);
 
 export const companies = pgTable("companies", {
@@ -264,6 +265,10 @@ export const reconciliationItems = pgTable(
     explanationOriginal: text("explanation_original"),
     computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
     contractVersion: text("contract_version").notNull(),
+    // Conferente (docs/04): só aponta; `revisado_divergente` pede olhar humano. Nunca corrige o item.
+    reviewStatus: reviewStatus("review_status"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewNote: text("review_note"),
   },
   (t) => [uniqueIndex("reconciliation_items_natural_uq").on(t.companyId, t.accessKey, t.period, t.kind)],
 );
@@ -369,7 +374,19 @@ export const agentRuns = pgTable("agent_runs", {
   finishedAt: timestamp("finished_at", { withTimezone: true }),
   triggeredBy: text("triggered_by").notNull(),
   status: agentRunStatus("status").notNull().default("rodando"),
+  // Contagem por tarefa de docs/06 (base das horas devolvidas) e estado de cada passo da rodada.
+  counts: jsonb("counts").$type<Record<string, number>>().notNull().default({}),
+  steps: jsonb("steps").$type<Record<string, RunStepState>>().notNull().default({}),
 });
+
+export interface RunStepState {
+  status: "trabalhando" | "feito" | "revisado_ok" | "revisado_divergente" | "erro";
+  summary?: string;
+  startedAt?: string;
+  finishedAt?: string;
+  /** Estado interno de passos de várias chamadas (ex.: páginas do Vigia já lidas). */
+  cursor?: Record<string, unknown>;
+}
 
 export const agentEvents = pgTable(
   "agent_events",
@@ -394,6 +411,15 @@ export const effortStandards = pgTable("effort_standards", {
   label: text("label").notNull(),
   minutes: integer("minutes").notNull(),
   source: text("source").notNull().default("premissa"),
+  updatedBy: text("updated_by"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Premissas da projeção (docs/09): editáveis só pelo Contador, como as de `effort_standards`. */
+export const teamPremises = pgTable("team_premises", {
+  key: text("key").primaryKey(),
+  label: text("label").notNull(),
+  value: integer("value").notNull(),
   updatedBy: text("updated_by"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -19,6 +19,7 @@ export async function readJson(request: Request): Promise<Record<string, unknown
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const isUuid = (v: string) => UUID_RE.test(v);
 
 export function optionalCompanyId(body: Record<string, unknown>): string | null | undefined {
   const value = body.companyId;

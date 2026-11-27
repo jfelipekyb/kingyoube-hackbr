@@ -97,6 +97,23 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ id:
         </Card>
       </div>
 
+      {item.reviewStatus ? (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle className="flex flex-wrap items-center gap-2">
+              Conferente
+              <StatusBadge tone={item.reviewStatus === "revisado_ok" ? "conciliado" : "divergente"}>
+                {item.reviewStatus === "revisado_ok" ? "Conferido do zero: bate" : "Conferido do zero: não bate"}
+              </StatusBadge>
+            </CardTitle>
+            <CardDescription>
+              Recálculo independente a partir do arquivo bruto da Receita e da nota{item.reviewedAt ? `, em ${dateTime.format(item.reviewedAt)}` : ""}. O Conferente não corrige: quem decide é você.
+            </CardDescription>
+          </CardHeader>
+          {item.reviewNote ? <CardContent className="text-sm">{item.reviewNote}</CardContent> : null}
+        </Card>
+      ) : null}
+
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <Card>
           <CardHeader>

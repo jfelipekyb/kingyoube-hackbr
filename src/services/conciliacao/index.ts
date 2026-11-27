@@ -19,6 +19,8 @@ export interface ConciliacaoDeps {
   runId?: string | null;
   /** `undefined` = usa a LLM se ANTHROPIC_API_KEY e LLM_MODEL existirem; `null` = só o modelo fixo. */
   rewriter?: Rewriter | null;
+  /** Na rodada da equipe o Analista registra a própria entrega, em chamada separada (docs/09). */
+  skipAnalystEvent?: boolean;
 }
 
 export interface ReconcileResult {
@@ -193,6 +195,9 @@ async function reconcileOne(deps: ConciliacaoDeps, companyId: string, period: st
           explanationOriginal: sql`excluded.explanation_original`,
           computedAt: sql`excluded.computed_at`,
           contractVersion: sql`excluded.contract_version`,
+          reviewStatus: null,
+          reviewedAt: null,
+          reviewNote: null,
         },
       });
   }
@@ -223,6 +228,7 @@ async function recordEvents(deps: ConciliacaoDeps, entity: string, entityId: str
     count: r.total,
     minutesSaved: r.total * (await minutesFor(deps.db, "conferir_nota")),
   });
+  if (deps.skipAnalystEvent) return;
   const llm = r.rewritten > 0 ? ` (${r.rewritten} com texto reescrito pelo modelo de linguagem, números conferidos)` : "";
   await recordAgentEvent(deps.db, {
     runId: deps.runId ?? null,

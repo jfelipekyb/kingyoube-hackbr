@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 type NavItem = { href: string; label: string; icon: LucideIcon; tour?: string };
 
 export const NAV_ITEMS: readonly NavItem[] = [
-  { href: "/", label: "Equipe ao vivo", icon: Radio },
+  { href: "/", label: "Sala da Equipe", icon: Radio },
   { href: "/kim", label: "Kim", icon: MessageCircle, tour: "kim" },
   { href: "/carteira", label: "Carteira", icon: Briefcase, tour: "carteira" },
   { href: "/sincronizacao", label: "Sincronização", icon: RefreshCw },
