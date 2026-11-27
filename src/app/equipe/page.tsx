@@ -88,7 +88,7 @@ export default async function EquipePage() {
         </ol>
       </section>
 
-      <section aria-labelledby="horas" className="mb-8 grid gap-4 lg:grid-cols-2">
+      <section aria-labelledby="horas" data-tour="equipe-horas" className="mb-8 grid gap-4 lg:grid-cols-2">
         <h2 id="horas" className="sr-only">
           Horas devolvidas
         </h2>

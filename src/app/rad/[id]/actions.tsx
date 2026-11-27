@@ -56,7 +56,7 @@ export function RadActions({ p, supplierRed, role, actor }: { p: ActionProposal;
     const json = (await res.json().catch(() => ({}))) as { erro?: string };
     setBusy(null);
     if (!res.ok || json.erro) {
-      setError(json.erro ?? "Não foi possível concluir.");
+      setError(json.erro ?? "Não foi possível concluir. Recarregue a página e tente de novo.");
       setShake(false);
       requestAnimationFrame(() => setShake(true));
       router.refresh();

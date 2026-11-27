@@ -23,7 +23,7 @@ export default async function RadPage({ searchParams }: { searchParams: Promise<
   const sp = await searchParams;
   const db = getDb();
   const { company, metrics } = await resolveCompany(db, sp.cliente);
-  if (!company) return <EmptyState message="Nenhum cliente na carteira." />;
+  if (!company) return <EmptyState message="Nenhum cliente na carteira. Reinicie a demonstração para recriar a base." action={<Link href="/demo" className="text-sm font-semibold text-kyb-azul underline underline-offset-4">Ir para a demonstração</Link>} />;
   const [candidates, proposals, suppliers] = await Promise.all([radCandidates(db, company.id), listProposals(db, company.id), supplierLights(db, company.id)]);
   const supplierByCnpj = new Map(suppliers.map((s) => [s.cnpj, s]));
   const openByInvoice = new Map(proposals.filter((p) => OPEN.includes(p.proposal.state)).map((p) => [p.proposal.invoiceId, p.proposal]));
@@ -59,7 +59,7 @@ export default async function RadPage({ searchParams }: { searchParams: Promise<
           </CardHeader>
           <CardContent className="px-0">
             {candidates.length === 0 ? (
-              <EmptyState message="Nenhuma compra candidata. Sincronize com a Receita se ainda não sincronizou." />
+              <EmptyState message="Nenhuma compra candidata. Sincronize com a Receita se ainda não sincronizou." action={<Link href="/sincronizacao" className="text-sm font-semibold text-kyb-azul underline underline-offset-4">Abrir Sincronização</Link>} />
             ) : (
               <Table>
                 <TableHeader>
@@ -109,7 +109,7 @@ export default async function RadPage({ searchParams }: { searchParams: Promise<
             <CardDescription>Propostas enviadas, aguardando a decisão do contador. Quem enviou não pode aprovar.</CardDescription>
           </CardHeader>
           <CardContent className="px-0">
-            <ProposalTable rows={queue} empty="Nenhuma proposta aguardando aprovação." />
+            <ProposalTable rows={queue} empty="Nenhuma proposta aguardando aprovação. Prepare uma proposta em Candidatas a RAD e envie ao contador." />
           </CardContent>
         </Card>
 
@@ -118,7 +118,7 @@ export default async function RadPage({ searchParams }: { searchParams: Promise<
             <CardTitle>Todas as propostas</CardTitle>
           </CardHeader>
           <CardContent className="px-0">
-            <ProposalTable rows={proposals} empty="Nenhuma proposta ainda." />
+            <ProposalTable rows={proposals} empty="Nenhuma proposta ainda. Comece por uma compra candidata, acima." />
           </CardContent>
         </Card>
       </div>

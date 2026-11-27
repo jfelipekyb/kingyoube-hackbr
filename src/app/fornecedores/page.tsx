@@ -16,7 +16,7 @@ export default async function FornecedoresPage({ searchParams }: { searchParams:
   const sp = await searchParams;
   const db = getDb();
   const { company, metrics } = await resolveCompany(db, sp.cliente);
-  if (!company) return <EmptyState message="Nenhum cliente na carteira." />;
+  if (!company) return <EmptyState message="Nenhum cliente na carteira. Reinicie a demonstração para recriar a base." action={<Link href="/demo" className="text-sm font-semibold text-kyb-azul underline underline-offset-4">Ir para a demonstração</Link>} />;
   const color = LIGHTS.includes(sp.cor as Light) ? (sp.cor as Light) : null;
   const [rows, contacts] = await Promise.all([supplierLights(db, company.id), supplierContactInfo(db, company.id)]);
   const href = (cliente: string, c: Light | null) => `/fornecedores?cliente=${cliente}${c ? `&cor=${c}` : ""}`;

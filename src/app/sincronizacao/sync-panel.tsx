@@ -82,7 +82,7 @@ export function SyncPanel({ initial, companyId }: { initial: SyncOverview; compa
     async (path: string, body: Record<string, unknown>, apply = true) => {
       const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(typeof json.erro === "string" ? json.erro : `Falha (HTTP ${res.status})`);
+      if (!res.ok) throw new Error(typeof json.erro === "string" ? json.erro : `Falha (HTTP ${res.status}). Tente de novo em instantes.`);
       if (apply) setOverview(json.overview as SyncOverview);
       return json.overview as SyncOverview;
     },

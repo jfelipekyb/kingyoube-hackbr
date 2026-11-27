@@ -89,7 +89,7 @@ function ChargeCell({ row, info }: { row: SupplierRow; info: SupplierContactInfo
 }
 
 export function SupplierTable({ rows, contacts }: { rows: SupplierRow[]; contacts?: Map<string, SupplierContactInfo> }) {
-  if (rows.length === 0) return <EmptyState message="Nenhum fornecedor nesta cor." />;
+  if (rows.length === 0) return <EmptyState message="Nenhum fornecedor nesta cor. Escolha outra cor no filtro." />;
   return (
     <Table>
       <TableHeader>
@@ -140,7 +140,7 @@ export function SupplierTable({ rows, contacts }: { rows: SupplierRow[]; contact
 }
 
 export function CustomerTable({ rows }: { rows: CustomerRow[] }) {
-  if (rows.length === 0) return <EmptyState message="Nenhuma venda nesta cor." />;
+  if (rows.length === 0) return <EmptyState message="Nenhuma venda nesta cor. Escolha outra cor no filtro." />;
   return (
     <Table>
       <TableHeader>

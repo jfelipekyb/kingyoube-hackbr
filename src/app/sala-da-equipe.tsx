@@ -43,7 +43,7 @@ function stateOf(step: RunSnapshot["steps"][keyof RunSnapshot["steps"]] | undefi
 async function call<T>(path: string, method: "GET" | "POST"): Promise<T> {
   const res = await fetch(path, { method, cache: "no-store" });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(typeof json.erro === "string" ? json.erro : `Falha (HTTP ${res.status})`);
+  if (!res.ok) throw new Error(typeof json.erro === "string" ? json.erro : `Falha (HTTP ${res.status}). Tente de novo em instantes.`);
   return json as T;
 }
 

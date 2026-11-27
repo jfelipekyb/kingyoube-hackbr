@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export function PageHeader({ title, description }: { title: string; description?: string }) {
   return (
-    <div className="mb-6">
+    <div className="mb-6 min-w-0 [overflow-wrap:anywhere]">
       <h1>{title}</h1>
       {description ? <p className="mt-2 max-w-3xl text-muted-foreground">{description}</p> : null}
     </div>

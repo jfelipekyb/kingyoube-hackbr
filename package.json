@@ -15,7 +15,8 @@
     "db:seed": "tsx scripts/seed.ts",
     "fixtures:receita": "tsx scripts/generate-fixtures.ts",
     "vercel-build": "npm run db:migrate && next build",
-    "radar:verificar": "tsx --conditions=react-server scripts/radar-real.ts"
+    "radar:verificar": "tsx --conditions=react-server scripts/radar-real.ts",
+    "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

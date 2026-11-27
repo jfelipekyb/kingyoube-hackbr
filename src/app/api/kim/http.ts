@@ -4,7 +4,7 @@ import { clientIp, limitPerIp } from "@/services/demo";
 import { VoiceError } from "@/services/kim/voz";
 
 /** Limites por IP (janela de 1 min): a voz gasta crédito da ElevenLabs. */
-export const KIM_LIMITS = { "kim.ouvir": 10, "kim.perguntar": 30, "kim.falar": 20 } as const;
+export const KIM_LIMITS = { "kim.ouvir": 10, "kim.perguntar": 30, "kim.falar": 20, "tour.falar": 30 } as const;
 
 export async function limitKim(request: Request, action: keyof typeof KIM_LIMITS): Promise<NextResponse | null> {
   const retry = await limitPerIp(getDb(), { action, ip: clientIp(request.headers), max: KIM_LIMITS[action] });

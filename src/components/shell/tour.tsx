@@ -1,10 +1,11 @@
 "use client";
 
-import { Compass, X } from "lucide-react";
+import { Compass, Volume2, VolumeX, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { availableSteps, pickTarget, readTourSeen, writeTourSeen, type TourStep } from "./tour-steps";
+import { pickTarget, planStep, readTourSeen, TOUR_STEPS, writeTourSeen } from "./tour-steps";
 
 type Rect = { top: number; left: number; width: number; height: number };
 type Placement = "right" | "bottom" | "left";
@@ -12,6 +13,11 @@ type Placement = "right" | "bottom" | "left";
 const GAP = 14;
 const POPOVER_WIDTH = 340;
 const PAD = 6;
+const POLL_MS = 150;
+const POLL_MAX = 40;
+
+type Narration = { audio: string; mime: string } | "sem-voz";
+type VoiceStatus = "carregando" | "sem-voz" | "erro" | null;
 
 function findTarget(target: string): HTMLElement | null {
   const list = [...document.querySelectorAll<HTMLElement>(`[data-tour="${target}"]`)];
@@ -44,64 +50,136 @@ function place(rect: Rect): { placement: Placement; top: number; left: number; w
   return { placement: "left", top: clampTop(rect.top - 8), left: Math.max(rect.left - GAP - width, 12), width };
 }
 
+function center(): { placement: Placement; top: number; left: number; width: number } {
+  const width = Math.min(POPOVER_WIDTH, window.innerWidth - 24);
+  return { placement: "bottom", top: Math.max(window.innerHeight / 2 - 120, 12), left: (window.innerWidth - width) / 2, width };
+}
+
 export function Tour() {
-  const [steps, setSteps] = useState<TourStep[] | null>(null);
+  const [active, setActive] = useState(false);
   const [index, setIndex] = useState(0);
-  const [rect, setRect] = useState<Rect | null>(null);
+  // Retângulo do alvo do passo `index`; `lost` = o alvo não apareceu, o balão fica no centro.
+  const [found, setFound] = useState<{ index: number; rect: Rect } | null>(null);
+  const [lostIndex, setLostIndex] = useState<number | null>(null);
+  const [sound, setSound] = useState(false);
+  const [voice, setVoice] = useState<{ index: number; status: VoiceStatus } | null>(null);
+  const narrations = useRef(new Map<number, Narration>());
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const router = useRouter();
+  const pathname = usePathname();
   const titleId = useId();
   const textId = useId();
 
   const open = useCallback(() => {
-    const list = availableSteps((t) => findTarget(t) !== null);
-    if (list.length === 0) return;
     setIndex(0);
-    setSteps(list);
+    setFound(null);
+    setLostIndex(null);
+    setActive(true);
   }, []);
 
   const close = useCallback(() => {
     writeTourSeen(safeStorage());
-    setSteps(null);
-    setRect(null);
+    audioRef.current?.pause();
+    setActive(false);
+    setFound(null);
     triggerRef.current?.focus();
   }, []);
 
-  // Primeira visita: abre sozinho.
+  // Primeira visita: abre sozinho, a partir da tela em que a pessoa chegou.
   useEffect(() => {
     if (readTourSeen(safeStorage())) return;
     const timer = window.setTimeout(open, 700);
     return () => window.clearTimeout(timer);
   }, [open]);
 
-  const step = steps?.[index];
+  const step = active ? TOUR_STEPS[index] : undefined;
+  const rect = found && found.index === index ? found.rect : null;
+  const lost = lostIndex === index;
 
+  // Acha o alvo do passo; se ele é de outra tela, navega até ela e espera a tela carregar.
   useLayoutEffect(() => {
     if (!step) return;
-    const el = findTarget(step.target);
-    if (!el) return;
-    el.scrollIntoView({ block: "nearest" });
-    const measure = () => {
-      const r = el.getBoundingClientRect();
-      setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+    let timer: number | undefined;
+    let tries = 0;
+    let navigated = false;
+    let detach: (() => void) | undefined;
+    const attach = (el: HTMLElement) => {
+      el.scrollIntoView({ block: "center" });
+      const measure = () => {
+        const r = el.getBoundingClientRect();
+        setFound({ index, rect: { top: r.top, left: r.left, width: r.width, height: r.height } });
+      };
+      measure();
+      window.addEventListener("resize", measure);
+      window.addEventListener("scroll", measure, true);
+      detach = () => {
+        window.removeEventListener("resize", measure);
+        window.removeEventListener("scroll", measure, true);
+      };
     };
-    measure();
-    window.addEventListener("resize", measure);
-    window.addEventListener("scroll", measure, true);
+    const attempt = () => {
+      const plan = planStep(step, window.location.pathname, (t) => findTarget(t) !== null);
+      if (plan.kind === "show") {
+        const el = findTarget(plan.target);
+        if (el) return attach(el);
+      }
+      if (plan.kind === "navigate" && !navigated) {
+        navigated = true;
+        router.push(plan.href);
+      }
+      if (++tries > POLL_MAX) return setLostIndex(index);
+      timer = window.setTimeout(attempt, POLL_MS);
+    };
+    attempt();
     return () => {
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("scroll", measure, true);
+      window.clearTimeout(timer);
+      detach?.();
     };
-  }, [step]);
+  }, [step, index, router, pathname]);
 
-  const hasRect = rect !== null;
+  // Narração opcional: som desligado por padrão; o áudio vem do cache (servidor e memória da página).
+  const shown = rect !== null || lost;
   useEffect(() => {
-    if (step && hasRect) dialogRef.current?.focus();
-  }, [step, hasRect]);
+    if (!active || !sound || !shown) return;
+    let cancelled = false;
+    const playClip = (n: Narration) => {
+      if (cancelled) return;
+      if (n === "sem-voz") return setVoice({ index, status: "sem-voz" });
+      setVoice({ index, status: null });
+      const audio = new Audio(`data:${n.mime};base64,${n.audio}`);
+      audioRef.current = audio;
+      audio.play().catch(() => setVoice({ index, status: "erro" }));
+    };
+    const cached = narrations.current.get(index);
+    if (cached) playClip(cached);
+    else {
+      setVoice({ index, status: "carregando" });
+      fetch("/api/tour/falar", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ passo: index + 1 }) })
+        .then(async (r) => {
+          const body = (await r.json().catch(() => null)) as { vozLigada?: boolean; audio?: string; mime?: string } | null;
+          if (!r.ok || !body) throw new Error("voz");
+          const n: Narration = body.vozLigada && body.audio && body.mime ? { audio: body.audio, mime: body.mime } : "sem-voz";
+          narrations.current.set(index, n);
+          playClip(n);
+        })
+        .catch(() => !cancelled && setVoice({ index, status: "erro" }));
+    }
+    return () => {
+      cancelled = true;
+      audioRef.current?.pause();
+      audioRef.current = null;
+    };
+  }, [active, sound, shown, index]);
 
-  const total = steps?.length ?? 0;
   useEffect(() => {
-    if (total === 0) return;
+    if (step && shown) dialogRef.current?.focus();
+  }, [step, shown]);
+
+  const total = TOUR_STEPS.length;
+  useEffect(() => {
+    if (!active) return;
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         e.preventDefault();
@@ -136,9 +214,9 @@ export function Tour() {
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [total, close]);
+  }, [active, total, close]);
 
-  if (!steps || !step) {
+  if (!step) {
     return (
       <Button ref={triggerRef} variant="outline" size="sm" onClick={open} data-tour-trigger>
         <Compass aria-hidden strokeWidth={1.75} />
@@ -147,11 +225,12 @@ export function Tour() {
     );
   }
 
-  const last = index === steps.length - 1;
+  const last = index === total - 1;
   const next = () => (last ? close() : setIndex((i) => i + 1));
   const prev = () => setIndex((i) => Math.max(i - 1, 0));
 
-  const pos = rect ? place(rect) : null;
+  const pos = rect ? place(rect) : lost ? center() : null;
+  const voiceStatus = sound && voice?.index === index ? voice.status : null;
 
   return (
     <>
@@ -188,10 +267,20 @@ export function Tour() {
           className="kyb-entrada kyb-balao-tour fixed z-50 rounded-kyb border border-kyb-linha bg-kyb-branco p-5 text-kyb-azul shadow-kyb outline-none"
           style={{ top: pos.top, left: pos.left, width: pos.width }}
         >
-          <div className="mb-2 flex items-center justify-between gap-3">
+          <div className="mb-2 flex items-center gap-2">
             <p id={titleId} className="text-rotulo text-kyb-mudo">
-              Passo {index + 1} de {steps.length}
+              Passo {index + 1} de {total}
             </p>
+            <button
+              type="button"
+              onClick={() => setSound((v) => !v)}
+              aria-pressed={sound}
+              aria-label={sound ? "Desligar a narração da Kim" : "Ligar a narração da Kim"}
+              title={sound ? "Narração da Kim ligada" : "Narração da Kim desligada"}
+              className="ml-auto rounded-kyb-botao p-1 text-kyb-mudo hover:bg-kyb-canvas-2 hover:text-kyb-azul focus-visible:outline-2 focus-visible:outline-kyb-azul-2 aria-pressed:text-kyb-azul"
+            >
+              {sound ? <Volume2 aria-hidden className="size-4" strokeWidth={1.75} /> : <VolumeX aria-hidden className="size-4" strokeWidth={1.75} />}
+            </button>
             <button
               type="button"
               onClick={close}
@@ -204,6 +293,15 @@ export function Tour() {
           <p id={textId} className="text-[15px] leading-relaxed" aria-live="polite">
             {step.text}
           </p>
+          {voiceStatus ? (
+            <p className="mt-2 text-secundario text-kyb-mudo" role="status">
+              {voiceStatus === "carregando"
+                ? "Carregando a voz da Kim…"
+                : voiceStatus === "sem-voz"
+                  ? "Voz desligada nesta instalação: siga pelo texto."
+                  : "A voz não tocou agora. Siga pelo texto ou desligue o som."}
+            </p>
+          ) : null}
           <div className="mt-4 flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={close}>
               Pular
@@ -217,7 +315,7 @@ export function Tour() {
               </Button>
             </div>
           </div>
-          <p className={cn("mt-3 text-secundario text-kyb-mudo")}>Setas avançam e voltam · Esc pula</p>
+          <p className={cn("mt-3 text-secundario text-kyb-mudo")}>Setas avançam e voltam · Esc pula · som desligado por padrão</p>
         </div>
       ) : null}
     </>
