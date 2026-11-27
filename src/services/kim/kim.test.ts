@@ -4,7 +4,7 @@ import * as s from "@/db/schema";
 import type { Db } from "@/db/types";
 import { ROUND_AGENTS, runAgentStep, startRun, type RunDeps } from "@/services/equipe/run";
 import { chargeIdempotencyKey } from "@/services/fornecedor";
-import { approveProposal, generateDarf, prepareProposal, submitProposal } from "@/services/rad";
+import { approveProposal, generateDarf, prepareProposal, rejectProposal, submitProposal } from "@/services/rad";
 import { createReceitaAdapter, pollRequests, syncPortfolio } from "@/services/receita";
 import { RECEITA_DOCS_BASE, WATCHED_PAGES } from "@/services/receita/contract";
 import type { Scraper } from "@/services/vigia/scrape";
@@ -86,6 +86,11 @@ describe("respostas da Kim com números da base (docs/09)", () => {
 
   it("seed + rodada completa, cobrança saiu sem confirmação de entrega: a última frase vem sem 'já'", async () => {
     await runRound();
+    // Sem RESEND_API_KEY a cobrança só é registrada: a Kim diz que é simulada.
+    expect((await ask("O que eu preciso decidir hoje?")).fala).toContain("Registrei a cobrança dos dois fornecedores, em modo simulado: nenhum e-mail saiu de verdade.");
+    expect((await ask("Os fornecedores foram cobrados?")).fala).toBe("Registrei a cobrança dos dois fornecedores, em modo simulado: nenhum e-mail saiu de verdade.");
+    // A Resend aceitou os e-mails (status "sent"), sem confirmação de entrega ainda.
+    await db.update(s.outboundMessages).set({ lastStatus: "sent" }).where(and(eq(s.outboundMessages.kind, "cobranca_fornecedor"), eq(s.outboundMessages.channel, "email")));
     const a = await ask("O que eu preciso decidir hoje?");
     expect(a.fala).toContain("Os dois fornecedores foram cobrados por e-mail.");
     expect((await ask("Os fornecedores foram cobrados?")).fala).toBe("Cobrei os dois fornecedores por e-mail. Ainda não tenho confirmação de entrega.");
@@ -172,4 +177,21 @@ describe("respostas da Kim com números da base (docs/09)", () => {
     );
     expect((await ask("Quanto crédito está travado?")).fala).toBe("O crédito travado na carteira é de oitocentos reais, todo na Padaria Boa Massa.");
   }, 120_000);
+
+  it("Auto Peças Rota 9: nota sem retorno da Receita não vira 'tudo conciliado' nem 'tudo verde'", async () => {
+    const motivo = await ask("Por que a Auto Peças Rota 9?");
+    expect(motivo.fala).not.toContain("está tudo conciliado");
+    expect(motivo.fala).toMatch(/ainda não batem? com a Receita/);
+    expect((await ask("Como estão as vendas da Auto Peças Rota 9?")).fala).not.toContain("todas as vendas estão no verde");
+  });
+
+  it("guia recusada pelo contador sai das decisões da Kim e do resumo do dia, como na Sala", async () => {
+    const [p] = await db.select().from(s.radProposals).where(eq(s.radProposals.invoiceId, invoiceOf("C3").id));
+    const proposal = p ?? (await prepareProposal(db, { companyId: padaria.id, invoiceId: invoiceOf("C3").id, requestedBy: ANALISTA }));
+    if (proposal.state === "rascunho") await submitProposal(db, { id: proposal.id, companyId: padaria.id, actor: ANALISTA });
+    await rejectProposal(db, { id: proposal.id, companyId: padaria.id, actor: CONTADOR, reason: "Fornecedor vai regularizar" });
+    expect((await ask("O que eu preciso decidir hoje?")).legenda).toContain("É uma decisão, na Padaria Boa Massa: uma diferença de R$ 12,00.");
+    const sent = await sendDailySummary(db, { now: new Date(clock.t + 86_400_000), actor: "agente:kim", env });
+    expect(sent.line).toBe("1 decisão, R$ 800,00 travado");
+  });
 });
