@@ -4,8 +4,9 @@ import { describe, expect, it } from "vitest";
 import { interpolateInt } from "@/components/ui/motion-utils";
 
 const css = readFileSync(join(__dirname, "motion.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
-const LOOPS = new Set(["kyb-anel", "kyb-balao", "kyb-brilho"]);
-const CONTINUOUS_LOOPS = new Set(["kyb-anel", "kyb-balao"]);
+const LOOPS = new Set(["kyb-anel", "kyb-balao", "kyb-brilho", "kyb-respira", "kyb-pontos"]);
+// Estados da Kim e "trabalhando" ficam fora do teto de 1,2s (docs/10, seção 4).
+const CONTINUOUS_LOOPS = new Set(["kyb-anel", "kyb-balao", "kyb-respira"]);
 
 function keyframeBodies(): Map<string, string> {
   const out = new Map<string, string>();

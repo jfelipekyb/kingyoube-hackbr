@@ -1,6 +1,6 @@
 // Reset da base de demonstração (docs/06): cron diário protegido e botão público limitado.
 import { createHash, timingSafeEqual } from "node:crypto";
-import { and, eq, gt, sql } from "drizzle-orm";
+import { and, asc, eq, gt, sql } from "drizzle-orm";
 import { auditLog } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { demoToday } from "@/lib/clock";
@@ -30,12 +30,13 @@ export function hashIp(ip: string, scope = "demo-reiniciar"): string {
 }
 
 /**
- * Limite de 1 ação por janela por IP (só o hash do IP vai para a auditoria). Devolve os segundos de espera, ou null se liberou.
+ * Limite de `max` ações (padrão 1) por janela deslizante por IP (só o hash do IP vai para a auditoria). Devolve os segundos de espera, ou null se liberou.
  * A ação liberada fica gravada como `action` com resultado "ok"; a barrada, como "limitado".
  */
-export async function limitPerIp(db: Db, input: { action: string; ip: string; windowMs?: number; now?: Date }): Promise<number | null> {
+export async function limitPerIp(db: Db, input: { action: string; ip: string; windowMs?: number; max?: number; now?: Date }): Promise<number | null> {
   const now = input.now ?? new Date();
   const windowMs = input.windowMs ?? 60_000;
+  const max = input.max ?? 1;
   const ipHash = hashIp(input.ip, input.action);
   const since = new Date(now.getTime() - windowMs);
   return db.transaction(async (tx) => {
@@ -44,8 +45,9 @@ export async function limitPerIp(db: Db, input: { action: string; ip: string; wi
       .select({ at: auditLog.at })
       .from(auditLog)
       .where(and(eq(auditLog.action, input.action), eq(auditLog.result, "ok"), gt(auditLog.at, since), sql`${auditLog.details}->>'ipHash' = ${ipHash}`))
-      .limit(1);
-    if (recent.length > 0) {
+      .orderBy(asc(auditLog.at))
+      .limit(max);
+    if (recent.length >= max) {
       await recordAudit(tx, { actor: "sistema:limite", action: input.action, entity: "limite_ip", result: "limitado", details: { ipHash } });
       return Math.max(Math.ceil((recent[0].at.getTime() + windowMs - now.getTime()) / 1000), 1);
     }

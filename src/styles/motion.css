@@ -1,7 +1,7 @@
 /*
  * Movimentos da marca (docs/10, seção 4). Só transform e opacity
  * (exceto o traço do check, que é desenho de SVG). Curva padrão: --kyb-curva.
- * Nenhuma animação passa de 1,2s, exceto os loops "trabalhando" e "Kim falando".
+ * Nenhuma animação passa de 1,2s, exceto os loops "trabalhando" e os estados da Kim.
  */
 
 @keyframes kyb-coroa {
@@ -39,6 +39,26 @@
   100% {
     opacity: 0;
     transform: scale(1.6);
+  }
+}
+
+@keyframes kyb-respira {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.015);
+  }
+}
+
+@keyframes kyb-pontos {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
   }
 }
 
@@ -97,6 +117,22 @@
 .kyb-falando {
   animation: kyb-balao 1200ms var(--kyb-curva) infinite;
   transform-origin: center;
+}
+
+/* Avatar da Kim (docs/11, seção 5): parado respira devagar, ouvindo tem anel verde, pensando mostra três pontos. */
+.kyb-kim-parado {
+  animation: kyb-respira 3200ms var(--kyb-curva) infinite;
+  transform-origin: 50% 60%;
+  transform-box: fill-box;
+}
+.kyb-kim-anel {
+  animation: kyb-anel 1600ms var(--kyb-curva) infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.kyb-kim-ponto {
+  animation: kyb-pontos 1200ms var(--kyb-curva) infinite;
+  animation-delay: calc(var(--kyb-ordem, 0) * 200ms);
 }
 
 /* Entrada em sequência: 50ms entre um item e outro (style="--kyb-ordem: n"). */

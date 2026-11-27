@@ -1,0 +1,1 @@
+ALTER TYPE "public"."outbound_email_kind" ADD VALUE 'resumo_kim';

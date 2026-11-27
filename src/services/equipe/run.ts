@@ -1,5 +1,6 @@
 // Rodada da equipe (docs/09): uma chamada por agente, na ordem da tabela; idempotente.
 // Cada agente é fachada fina sobre o serviço de domínio. Nenhum agente aprova nada: a rodada só prepara.
+import { sendDailySummary } from "@/services/kim/resumo";
 import { and, desc, eq, gte, inArray, isNotNull, lt, ne, notInArray, or, sql } from "drizzle-orm";
 import { agentEvents, agentRuns, companies, counterparties, docWatch, invoices, outboundMessages, radProposals, reconciliationItems, rfbRequests, type RunStepState } from "@/db/schema";
 import type { Db } from "@/db/types";
@@ -249,8 +250,9 @@ async function mensageiro({ deps, env, now }: Ctx): Promise<Outcome> {
   return { done: true, summary, counts: { escrever_email: sent } };
 }
 
-async function kim({ deps }: Ctx): Promise<Outcome> {
+async function kim({ deps, env, now }: Ctx): Promise<Outcome> {
   const t = portfolioTotals(await portfolioMetrics(deps.db));
+  await sendDailySummary(deps.db, { now: now(), actor: "agente:kim", env });
   return { done: true, summary: `Resumo pronto: ${plural(t.decisions, "decisão espera", "decisões esperam")} o contador.` };
 }
 

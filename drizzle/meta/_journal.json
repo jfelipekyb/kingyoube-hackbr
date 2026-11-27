@@ -64,6 +64,20 @@
       "when": 1795734198605,
       "tag": "0008_s6_premissas",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795781008026,
+      "tag": "0009_s7_kim_audio_cache",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795781323051,
+      "tag": "0010_s7_kim_resumo",
+      "breakpoints": true
     }
   ]
 }
