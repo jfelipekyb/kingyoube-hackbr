@@ -1,6 +1,6 @@
 "use client";
 
-import { Mic, Send, Square } from "lucide-react";
+import { Mic, Send, Square, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { KimAvatar, type KimState } from "@/components/kim/kim-avatar";
 import { KimCaption } from "@/components/kim/kim-caption";
@@ -50,7 +50,7 @@ export function KimScreen({ voiceOn, initialQuestion }: { voiceOn: boolean; init
         const a = await post("/api/kim/perguntar", JSON.stringify({ texto: text, modo: mode }));
         setAnswer(a.legenda);
         if (a.vozLigada) {
-          const f = await post("/api/kim/falar", JSON.stringify({ texto: a.fala }));
+          const f = await post("/api/kim/falar", JSON.stringify({ consulta: a.consulta }));
           if (f.vozLigada) {
             setState("falando");
             await speech.play({ audio: f.audio, mime: f.mime, alinhamento: f.alinhamento });
@@ -62,6 +62,26 @@ export function KimScreen({ voiceOn, initialQuestion }: { voiceOn: boolean; init
       setState("parado");
     },
     [speech],
+  );
+
+  const replay = useCallback(async () => {
+    if (!speech.blocked) return;
+    setState("falando");
+    await speech.play(speech.blocked);
+    setState("parado");
+  }, [speech]);
+
+  // Saiu da tela no meio da gravação: desliga o microfone sem mandar o áudio.
+  useEffect(
+    () => () => {
+      const rec = recorder.current;
+      if (!rec) return;
+      rec.onstop = null;
+      if (rec.state !== "inactive") rec.stop();
+      rec.stream.getTracks().forEach((t) => t.stop());
+      recorder.current = null;
+    },
+    [],
   );
 
   const asked = useRef(false);
@@ -168,6 +188,11 @@ export function KimScreen({ voiceOn, initialQuestion }: { voiceOn: boolean; init
             </div>
           ) : (
             !question && <p className="text-[var(--kyb-mudo)]">Pergunte o que precisa de decisão hoje. Os números vêm da base, pela regra.</p>
+          )}
+          {speech.blocked && state === "parado" && (
+            <Button variant="outline" className="mt-3" onClick={replay}>
+              <Volume2 aria-hidden="true" /> Ouvir a resposta
+            </Button>
           )}
           {error && <p className="mt-3 text-sm text-[var(--kyb-erro)]" role="alert">{error}</p>}
         </div>

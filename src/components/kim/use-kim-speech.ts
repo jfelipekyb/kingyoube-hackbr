@@ -23,6 +23,8 @@ export function useKimSpeech() {
   const [spoken, setSpoken] = useState<number | null>(null);
   const [words, setWords] = useState<WordTiming[] | null>(null);
   const [playing, setPlaying] = useState(false);
+  // O navegador pode bloquear o áudio que não veio direto de um clique: guarda a fala para o botão "Ouvir a resposta".
+  const [blocked, setBlocked] = useState<SpeechClip | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const ctxRef = useRef<AudioContext | null>(null);
@@ -44,6 +46,7 @@ export function useKimSpeech() {
   const play = useCallback(
     (clip: SpeechClip): Promise<void> => {
       stop();
+      setBlocked(null);
       const reduced = prefersReducedMotion();
       const w = clip.alinhamento ? wordTimings(clip.alinhamento) : null;
       setWords(w);
@@ -83,11 +86,20 @@ export function useKimSpeech() {
         audio.addEventListener("ended", done, { once: true });
         audio.addEventListener("error", done, { once: true });
         setPlaying(true);
-        audio.play().then(() => (rafRef.current = requestAnimationFrame(tick)), done);
+        audio.play().then(
+          () => (rafRef.current = requestAnimationFrame(tick)),
+          () => {
+            setWords(null);
+            setSpoken(null);
+            stop();
+            setBlocked(clip);
+            resolve();
+          },
+        );
       });
     },
     [stop],
   );
 
-  return { play, stop, mouth, blink, playing, words, spoken };
+  return { play, stop, mouth, blink, playing, words, spoken, blocked };
 }
