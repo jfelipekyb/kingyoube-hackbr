@@ -67,7 +67,7 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ id:
                 <Row label={isSale ? "CBS da nota" : "Crédito de CBS da nota"} value={formatBRL(d.invoice.invoice.cbsCents)} strong />
               </dl>
             ) : (
-              <EmptyState message="Não há nota no sistema para esta chave e período." />
+              <EmptyState message="Não há nota no sistema para esta chave e período. Confira com o cliente se a nota foi lançada." />
             )}
           </CardContent>
         </Card>
@@ -80,7 +80,7 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ id:
           </CardHeader>
           <CardContent>
             {d.receita.length === 0 ? (
-              <EmptyState message="A Receita não tem registro para esta chave e período." />
+              <EmptyState message="A Receita não tem registro para esta chave e período. Sincronize de novo ou aguarde a próxima apuração." />
             ) : (
               d.receita.map((r) => (
                 <dl key={r.origin} className="mb-3 last:mb-0">

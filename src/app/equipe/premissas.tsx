@@ -32,7 +32,7 @@ function Row({ row, canEdit }: { row: PremiseRow; canEdit: boolean }) {
         body: JSON.stringify({ tipo: row.tipo, chave: row.chave, valor: Number(value) }),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(typeof json.erro === "string" ? json.erro : `Falha (HTTP ${res.status})`);
+      if (!res.ok) throw new Error(typeof json.erro === "string" ? json.erro : `Falha (HTTP ${res.status}). Tente de novo em instantes.`);
       setMsg({ ok: true, text: "Salvo e registrado na auditoria." });
       router.refresh();
     } catch (e) {

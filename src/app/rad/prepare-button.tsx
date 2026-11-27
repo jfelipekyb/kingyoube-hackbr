@@ -16,7 +16,7 @@ export function PrepareButton({ companyId, invoiceId }: { companyId: string; inv
     const res = await fetch("/api/rad/proposals", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, invoiceId }) });
     const body = (await res.json()) as { proposta?: { id: string }; erro?: string };
     setBusy(false);
-    if (!res.ok || !body.proposta) return setError(body.erro ?? "Não foi possível preparar a proposta.");
+    if (!res.ok || !body.proposta) return setError(body.erro ?? "Não foi possível preparar a proposta. Tente de novo; se persistir, reinicie a demonstração.");
     router.push(`/rad/${body.proposta.id}`);
   }
   return (
