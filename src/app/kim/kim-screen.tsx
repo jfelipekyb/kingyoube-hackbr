@@ -133,7 +133,7 @@ export function KimScreen({ voiceOn, initialQuestion }: { voiceOn: boolean; init
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-      <section className="flex flex-col items-center gap-4 rounded-[var(--kyb-raio)] border border-[var(--kyb-linha)] bg-[var(--kyb-branco)] p-6">
+      <section data-tour="kim-tela" className="flex flex-col items-center gap-4 rounded-[var(--kyb-raio)] border border-[var(--kyb-linha)] bg-[var(--kyb-branco)] p-6">
         <KimAvatar state={state} mouth={speech.mouth} blink={speech.blink} />
         <Wave level={speech.mouth} active={state === "falando"} />
         <p className="text-sm text-[var(--kyb-mudo)]" aria-live="polite">
