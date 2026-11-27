@@ -433,3 +433,23 @@ export const kimQueries = pgTable("kim_queries", {
   intent: text("intent").notNull(),
   answerText: text("answer_text").notNull(),
 });
+
+/** Tempos de cada caractere da fala (ElevenLabs with-timestamps), em segundos. */
+export interface CharAlignment {
+  characters: string[];
+  starts: number[];
+  ends: number[];
+}
+
+/** Áudio da fala da Kim (voz sintética; nunca a voz do usuário), pelo hash de texto + voz + modelo: a mesma frase não gasta crédito duas vezes. */
+export const kimAudioCache = pgTable("kim_audio_cache", {
+  hash: varchar("hash", { length: 64 }).primaryKey(),
+  voiceId: text("voice_id").notNull(),
+  model: text("model").notNull(),
+  text: text("text").notNull(),
+  mime: text("mime").notNull(),
+  audioBase64: text("audio_base64").notNull(),
+  alignment: jsonb("alignment").$type<CharAlignment | null>(),
+  hits: integer("hits").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
