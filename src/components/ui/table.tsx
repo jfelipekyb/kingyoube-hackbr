@@ -3,11 +3,31 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
+/** Tabela mais larga que a tela rola sozinha; aí o contêiner entra no Tab para rolar pelo teclado. */
+function useScrollable<T extends HTMLElement>() {
+  const ref = React.useRef<T>(null)
+  const [scrollable, setScrollable] = React.useState(false)
+  React.useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const check = () => setScrollable(el.scrollWidth > el.clientWidth + 1)
+    check()
+    const ro = new ResizeObserver(check)
+    ro.observe(el)
+    if (el.firstElementChild) ro.observe(el.firstElementChild)
+    return () => ro.disconnect()
+  }, [])
+  return [ref, scrollable] as const
+}
+
 function Table({ className, ...props }: React.ComponentProps<"table">) {
+  const [ref, scrollable] = useScrollable<HTMLDivElement>()
   return (
     <div
+      ref={ref}
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      tabIndex={scrollable ? 0 : undefined}
+      className="relative w-full overflow-x-auto rounded-kyb-botao focus-visible:outline-2 focus-visible:outline-kyb-azul-2"
     >
       <table
         data-slot="table"
