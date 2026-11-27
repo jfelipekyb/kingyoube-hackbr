@@ -54,6 +54,17 @@ describe("rotas da Kim sem chave da ElevenLabs", () => {
     expect(net).not.toHaveBeenCalled();
   });
 
+  it("cada pergunta vai para kim_queries e para a auditoria com modo, texto reconhecido, intenção e resposta — sem áudio", async () => {
+    const r = await (await perguntar.POST(json({ texto: "Quanto crédito está travado?", modo: "voz" }))).json();
+    const [q] = await db.select().from(s.kimQueries).where(sql`${s.kimQueries.recognizedText} = 'Quanto crédito está travado?'`);
+    expect(q).toMatchObject({ inputMode: "voz", intent: "credito_travado", answerText: r.legenda });
+    expect(q.userId).not.toBeNull();
+    expect(Object.keys(q).some((k) => /audio|audio/i.test(k))).toBe(false);
+    const [audit] = await db.select().from(s.auditLog).where(sql`${s.auditLog.entityId} = ${q.id}`);
+    expect(audit).toMatchObject({ action: "kim.pergunta", entity: "kim_query", result: "credito_travado" });
+    expect(JSON.stringify(audit.details)).not.toMatch(/audio|base64/i);
+  });
+
   it("pergunta vazia ou longa demais → 400", async () => {
     expect((await perguntar.POST(json({ texto: "  " }))).status).toBe(400);
     expect((await perguntar.POST(json({ texto: "a".repeat(501) }))).status).toBe(400);

@@ -184,8 +184,8 @@ export function SalaDaEquipe({ agents, initial }: { agents: AgentCard[]; initial
                   ))}
                 </ul>
                 <div className="flex flex-wrap items-center gap-4 pt-1">
-                  <Link href="/kim" className="text-sm font-semibold underline underline-offset-4">
-                    Perguntar à Kim o que decidir primeiro
+                  <Link href={`/kim?pergunta=${encodeURIComponent("O que eu preciso decidir hoje?")}`} className="text-sm font-semibold underline underline-offset-4">
+                    Perguntar à Kim
                   </Link>
                   <Link href="/equipe" className="text-sm underline underline-offset-4">
                     Esta rodada devolveu {hoursFmt.format(snap.hours.hours)} h de trabalho
