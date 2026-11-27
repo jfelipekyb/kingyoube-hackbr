@@ -132,7 +132,7 @@ export function KimScreen({ voiceOn, initialQuestion }: { voiceOn: boolean; init
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,320px)_1fr]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
       <section className="flex flex-col items-center gap-4 rounded-[var(--kyb-raio)] border border-[var(--kyb-linha)] bg-[var(--kyb-branco)] p-6">
         <KimAvatar state={state} mouth={speech.mouth} blink={speech.blink} />
         <Wave level={speech.mouth} active={state === "falando"} />
@@ -147,7 +147,7 @@ export function KimScreen({ voiceOn, initialQuestion }: { voiceOn: boolean; init
       <section className="flex flex-col gap-4">
         <div className="flex flex-wrap gap-2">
           {PRESETS.map((p) => (
-            <Button key={p} variant="outline" onClick={() => ask(p, "botao")} disabled={busy || state === "ouvindo"}>
+            <Button key={p} variant="outline" className="h-auto min-h-9 max-w-full py-1.5 text-left whitespace-normal" onClick={() => ask(p, "botao")} disabled={busy || state === "ouvindo"}>
               {p}
             </Button>
           ))}
@@ -169,7 +169,7 @@ export function KimScreen({ voiceOn, initialQuestion }: { voiceOn: boolean; init
             onChange={(e) => setDraft(e.target.value)}
             maxLength={500}
             placeholder="Escreva sua pergunta"
-            className="h-10 flex-1 rounded-[var(--kyb-raio-botao)] border border-[var(--kyb-linha)] bg-[var(--kyb-branco)] px-3"
+            className="h-10 min-w-0 flex-1 rounded-[var(--kyb-raio-botao)] border border-[var(--kyb-linha)] bg-[var(--kyb-branco)] px-3"
           />
           <Button type="submit" disabled={busy || !draft.trim()}>
             <Send aria-hidden="true" /> Perguntar
