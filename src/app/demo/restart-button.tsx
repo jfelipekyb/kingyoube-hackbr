@@ -13,7 +13,7 @@ export function RestartButton() {
     start(async () => {
       const res = await fetch("/api/demo/reiniciar", { method: "POST" });
       if (res.status === 429) setMessage("Já reiniciamos há menos de um minuto. Aguarde e tente de novo.");
-      else if (!res.ok) setMessage("Não foi possível reiniciar agora.");
+      else if (!res.ok) setMessage("Não foi possível reiniciar agora. Tente de novo em instantes; se persistir, recarregue a página.");
       else {
         const { counts } = (await res.json()) as { counts: { companies: number; invoices: number } };
         setMessage(`Base recriada: ${counts.companies} clientes e ${counts.invoices} notas.`);
