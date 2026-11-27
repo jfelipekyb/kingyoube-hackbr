@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import * as s from "@/db/schema";
 import type { Db } from "@/db/types";
@@ -13,6 +13,7 @@ import { createTestDb } from "@/test/db";
 import { ANALISTA, CONTADOR, invoiceOf, padaria } from "@/test/rad-fixture";
 import { answerQuestion, FORBIDDEN_ANSWER, HELP_ANSWER, NOT_RUN_ANSWER } from "./answers";
 import { classify } from "./intents";
+import { sendDailySummary, SUMMARY_TO, summaryLine } from "./resumo";
 
 const env = { RECEITA_MODE: "SIMULADO", DEMO_TODAY: "2026-11-20" };
 const page = (v: string) => `# Página\n\n## 2. Histórico de versão\n\n| Data | Versão | Descrição |\n|---|---|---|\n| 01/10/2026 | ${v} | ajuste |\n\n## 3. Regras`;
@@ -128,6 +129,21 @@ describe("respostas da Kim com números da base (docs/09)", () => {
     expect(a.intent).toBe("semaforo_clientes");
     expect(a.fala).toMatch(/^Na Padaria Boa Massa, uma venda está no vermelho: .+ não pagou e há .+ de CBS em aberto; recomendo recolher a CBS e cobrar o cliente\. Uma venda está no amarelo: .+ ainda vai pagar, com .+ de CBS em aberto; recomendo cobrar antes do vencimento\.$/);
     expect(a.fala).not.toMatch(/\d|FICTÍCIA/);
+  });
+
+  it("resumo do dia da Kim no WhatsApp simulado: '3 decisões, R$ 1.236,50 travado', em outbound_messages e na auditoria, sem duplicar", async () => {
+    const rows = await db.select().from(s.outboundMessages).where(eq(s.outboundMessages.kind, "resumo_kim"));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ channel: "whatsapp", lastStatus: "simulado", toLabel: SUMMARY_TO, refId: "2026-11-20" });
+    expect(rows[0].body).toContain("3 decisões, R$ 1.236,50 travado");
+    const [audit] = await db.select().from(s.auditLog).where(and(eq(s.auditLog.entityId, rows[0].id), eq(s.auditLog.action, "mensagem.whatsapp_resumo_kim")));
+    expect(audit).toMatchObject({ actor: "agente:kim", action: "mensagem.whatsapp_resumo_kim", result: "simulado" });
+    const [ev] = await db.select().from(s.agentEvents).where(eq(s.agentEvents.entityId, rows[0].id));
+    expect(ev).toMatchObject({ agent: "kim", action: "resumo_whatsapp" });
+    const again = await sendDailySummary(db, { now: new Date(clock.t), actor: "agente:kim", env });
+    expect(again.created).toBe(false);
+    expect(await db.select().from(s.outboundMessages).where(eq(s.outboundMessages.kind, "resumo_kim"))).toHaveLength(1);
+    expect(summaryLine(1, 43650n)).toBe("1 decisão, R$ 436,50 travado");
   });
 
   it("'Kim, aprova a guia' → acao_proibida e nenhuma proposta muda de estado", async () => {
